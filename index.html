@@ -155,6 +155,52 @@
   <span id="fab-ico">+</span>
 </button>
 
+<!-- ── ADMIN PANEL MODAL ───────────────────────────────── -->
+<div class="modal-overlay" id="admin-modal">
+  <div class="modal">
+    <h3>⚙️ Panel Admin</h3>
+    <div id="admin-users-list"></div>
+    <button class="btn btn-primary btn-sm" style="margin-top:14px"
+            onclick="openCreateUserForm()">+ Nuevo usuario</button>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAdminPanel()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── USER FORM MODAL (crear / editar) ──────────────── -->
+<div class="modal-overlay" id="user-form-modal">
+  <div class="modal">
+    <h3 id="user-form-title">Nuevo usuario</h3>
+    <input type="hidden" id="user-form-id">
+    <div class="form-row">
+      <label>Nombre</label>
+      <input id="user-form-name" type="text" autocomplete="off" placeholder="Nombre del usuario">
+    </div>
+    <div class="form-row">
+      <label>Rol</label>
+      <select id="user-form-role">
+        <option value="viewer">Visitante</option>
+        <option value="editor">Editor</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>PIN <small id="user-form-pin-hint" style="color:var(--text2);font-weight:400">Requerido</small></label>
+      <input id="user-form-pin" type="password" inputmode="numeric" placeholder="••••" maxlength="8">
+    </div>
+    <div class="form-row">
+      <label>Confirmar PIN</label>
+      <input id="user-form-pin2" type="password" inputmode="numeric" placeholder="••••" maxlength="8">
+    </div>
+    <div class="login-error" id="user-form-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeUserForm()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitUserForm()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── CONFIRM DIALOG ────────────────────────────────────── -->
 <div id="confirm-overlay">
   <div id="confirm-box">
@@ -162,7 +208,7 @@
     <div class="confirm-msg" id="confirm-msg"></div>
     <div class="confirm-actions">
       <button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
-      <button class="btn btn-danger" id="confirm-ok-btn">Confirmar</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Confirmar</button>
     </div>
   </div>
 </div>

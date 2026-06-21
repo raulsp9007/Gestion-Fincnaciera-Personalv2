@@ -1,3 +1,113 @@
 'use strict';
-// Fase 2 — Panel admin (usuarios, menús compartidos)
-// stub: implementación pendiente
+
+// ── Panel Admin — modal principal ─────────────────────────
+function openAdminPanel() {
+  renderAdminUsers();
+  document.getElementById('admin-modal').classList.add('open');
+}
+
+function closeAdminPanel() {
+  document.getElementById('admin-modal').classList.remove('open');
+}
+
+// ── Lista de usuarios ─────────────────────────────────────
+function renderAdminUsers() {
+  const users = loadUsers();
+  const el    = document.getElementById('admin-users-list');
+
+  if (!users.length) {
+    el.innerHTML = '<div class="empty">Sin usuarios</div>';
+    return;
+  }
+
+  el.innerHTML = users.map(u => `
+    <div class="cat-row">
+      <span class="cat-row-label" style="font-weight:600">${esc(u.name)}</span>
+      <span class="role-chip ${u.role}">${u.role}</span>
+      ${u.id !== currentUser.id ? `
+        <div class="cat-row-actions">
+          <button title="Editar" onclick="openEditUserForm(${u.id})">✏️</button>
+          <button title="Eliminar" onclick="confirmDeleteUser(${u.id})">🗑️</button>
+        </div>
+      ` : '<span style="font-size:.72rem;color:var(--text2)">(tú)</span>'}
+    </div>
+  `).join('');
+}
+
+// ── Formulario crear usuario ──────────────────────────────
+function openCreateUserForm() {
+  document.getElementById('user-form-id').value        = '';
+  document.getElementById('user-form-title').textContent = 'Nuevo usuario';
+  document.getElementById('user-form-name').value      = '';
+  document.getElementById('user-form-role').value      = 'viewer';
+  document.getElementById('user-form-pin').value       = '';
+  document.getElementById('user-form-pin2').value      = '';
+  document.getElementById('user-form-pin-hint').textContent = 'Requerido';
+  document.getElementById('user-form-error').textContent  = '';
+  document.getElementById('user-form-modal').classList.add('open');
+}
+
+// ── Formulario editar usuario ─────────────────────────────
+function openEditUserForm(userId) {
+  const u = loadUsers().find(u => u.id === userId);
+  if (!u) return;
+
+  document.getElementById('user-form-id').value        = userId;
+  document.getElementById('user-form-title').textContent = 'Editar usuario';
+  document.getElementById('user-form-name').value      = u.name;
+  document.getElementById('user-form-role').value      = u.role;
+  document.getElementById('user-form-pin').value       = '';
+  document.getElementById('user-form-pin2').value      = '';
+  document.getElementById('user-form-pin-hint').textContent = 'Dejar vacío para no cambiar';
+  document.getElementById('user-form-error').textContent  = '';
+  document.getElementById('user-form-modal').classList.add('open');
+}
+
+function closeUserForm() {
+  document.getElementById('user-form-modal').classList.remove('open');
+}
+
+// ── Guardar (crear o editar) ──────────────────────────────
+async function submitUserForm() {
+  const id    = document.getElementById('user-form-id').value;
+  const name  = document.getElementById('user-form-name').value.trim();
+  const role  = document.getElementById('user-form-role').value;
+  const pin   = document.getElementById('user-form-pin').value;
+  const pin2  = document.getElementById('user-form-pin2').value;
+  const errEl = document.getElementById('user-form-error');
+  errEl.textContent = '';
+
+  if (!name) { errEl.textContent = 'Nombre obligatorio.'; return; }
+
+  if (!id) {
+    // Crear
+    if (!/^\d{4,8}$/.test(pin)) { errEl.textContent = 'PIN debe ser 4–8 dígitos numéricos.'; return; }
+    if (pin !== pin2)           { errEl.textContent = 'Los PINs no coinciden.'; return; }
+    await createUser(name, pin, role);
+  } else {
+    // Editar
+    const uid = parseInt(id, 10);
+    updateUserName(uid, name);
+    updateUserRole(uid, role);
+    if (pin) {
+      if (!/^\d{4,8}$/.test(pin)) { errEl.textContent = 'PIN debe ser 4–8 dígitos numéricos.'; return; }
+      if (pin !== pin2)           { errEl.textContent = 'Los PINs no coinciden.'; return; }
+      await updateUserPin(uid, pin);
+    }
+  }
+
+  closeUserForm();
+  renderAdminUsers();
+  showToast(id ? 'Usuario actualizado' : 'Usuario creado');
+}
+
+// ── Eliminar ──────────────────────────────────────────────
+function confirmDeleteUser(userId) {
+  const u = loadUsers().find(u => u.id === userId);
+  if (!u) return;
+  showConfirm(`¿Eliminar usuario "${u.name}"?`, () => {
+    deleteUser(userId);
+    renderAdminUsers();
+    showToast('Usuario eliminado', 'var(--red)');
+  }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
