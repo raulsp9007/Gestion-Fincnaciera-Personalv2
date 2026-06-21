@@ -67,9 +67,8 @@ function openUserMenu() {
 }
 
 // ── Stubs de fases futuras ────────────────────────────────
-function openCatsModal()      { showToast('Próximamente — Fase 3', 'var(--yellow)'); }
-function openNewRecordModal() { showToast('Próximamente — Fase 3', 'var(--yellow)'); }
-function forceSyncNow()       { showToast('Próximamente — Fase 5', 'var(--yellow)'); }
+function openCatsModal() { showToast('Próximamente', 'var(--yellow)'); }
+function forceSyncNow()  { showToast('Próximamente — Fase 5', 'var(--yellow)'); }
 
 // ── Pantallas ─────────────────────────────────────────────
 function _hideAllScreens() {
@@ -149,6 +148,7 @@ function startApp() {
 
   buildNav();
   switchView('inicio');
+  renderInicio();
 
   document.getElementById('app').classList.remove('hidden');
 }
