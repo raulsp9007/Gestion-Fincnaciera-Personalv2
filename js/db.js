@@ -54,3 +54,71 @@ function deleteTx(id) {
   d.inicio = d.inicio.filter(t => t.id !== id);
   saveData();
 }
+
+// ── Custom Menus ──────────────────────────────────────────
+function getCustomMenus() {
+  return loadData().customMenus ?? [];
+}
+
+function getCustomMenu(menuId) {
+  return getCustomMenus().find(m => m.id === menuId) ?? null;
+}
+
+function addCustomMenu(fields) {
+  const d     = loadData();
+  const menus = d.customMenus;
+  const id    = menus.length ? Math.max(...menus.map(m => m.id)) + 1 : 1;
+  const menu  = { id, data: [], nextDataId: 1, ...fields };
+  menus.push(menu);
+  d.navOrder.push('menu-' + id);
+  saveData();
+  return menu;
+}
+
+function updateCustomMenu(menuId, fields) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+  Object.assign(m, fields);
+  saveData();
+}
+
+function deleteCustomMenu(menuId) {
+  const d = loadData();
+  d.customMenus = d.customMenus.filter(m => m.id !== menuId);
+  d.navOrder    = d.navOrder.filter(k => k !== 'menu-' + menuId);
+  saveData();
+}
+
+// ── Custom Menu Transactions ──────────────────────────────
+function getMenuTxs(menuId) {
+  return getCustomMenu(menuId)?.data ?? [];
+}
+
+function addMenuTx(menuId, fields) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return null;
+  const tx = { id: m.nextDataId++, ...fields };
+  m.data.push(tx);
+  saveData();
+  return tx;
+}
+
+function updateMenuTx(menuId, txId, fields) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+  const idx = m.data.findIndex(t => t.id === txId);
+  if (idx < 0) return;
+  m.data[idx] = { ...m.data[idx], ...fields };
+  saveData();
+}
+
+function deleteMenuTx(menuId, txId) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+  m.data = m.data.filter(t => t.id !== txId);
+  saveData();
+}

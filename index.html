@@ -114,7 +114,8 @@
         <!-- renderizado por admin.js -->
       </div>
 
-      <!-- VISTAS: Menús personalizados (generadas dinámicamente por nav.js) -->
+      <!-- VISTA: Menú personalizado (contenedor único, renderizado dinámico) -->
+      <div id="view-custom" class="view"></div>
 
     </div><!-- /content -->
 
@@ -154,6 +155,33 @@
 <button id="fab" onclick="openNewRecordModal()">
   <span id="fab-ico">+</span>
 </button>
+
+<!-- ── NEW / EDIT MENU MODAL ─────────────────────────── -->
+<div class="modal-overlay" id="menu-modal">
+  <div class="modal" style="width:400px">
+    <h3 id="menu-modal-title">Nuevo menú</h3>
+    <input type="hidden" id="menu-modal-id">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Nombre</label>
+        <input id="menu-name" type="text" placeholder="Ej: Vacaciones" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label>Icono (emoji)</label>
+        <input id="menu-icon" type="text" placeholder="📋" maxlength="4">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Moneda <small style="color:var(--text2);font-weight:400">(símbolo, ej: € $ £)</small></label>
+      <input id="menu-currency" type="text" placeholder="€" maxlength="5">
+    </div>
+    <div class="login-error" id="menu-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost"   onclick="closeMenuModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMenuModal()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── NEW / EDIT TRANSACTION MODAL ──────────────────── -->
 <div class="modal-overlay" id="tx-modal">

@@ -191,6 +191,9 @@ body.is-admin .col-cfg-btn{display:inline-flex}
 #bottom-nav{display:none}
 #fab{display:none}
 
+/* ── CUSTOM MENU HEADER ──────────────────────────────────── */
+.menu-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+
 /* ── TYPE TOGGLE (inc/exp) ───────────────────────────────── */
 .type-toggle{display:flex;gap:8px;margin-bottom:16px}
 .type-btn{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:.83rem;font-weight:600;cursor:pointer;transition:.15s}

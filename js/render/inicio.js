@@ -231,37 +231,44 @@ function _drawCharts(txs, cats) {
   }
 }
 
-// ── New / Edit modal ──────────────────────────────────────
-let _txType = 'exp';
+// ── Tx modal — shared state ───────────────────────────────
+let _txType    = 'exp';
+let _txContext = { src: 'inicio', menuId: null }; // shared with custom-menu.js
 
 function openNewRecordModal() {
+  // Detect context from current view (defined in nav.js)
+  if (typeof _currentView !== 'undefined' && _currentView.startsWith('menu-')) {
+    _txContext = { src: 'custom', menuId: parseInt(_currentView.slice(5), 10) };
+  } else {
+    _txContext = { src: 'inicio', menuId: null };
+  }
   _txType = 'exp';
-  document.getElementById('tx-id').value            = '';
+  document.getElementById('tx-id').value              = '';
   document.getElementById('tx-modal-title').textContent = 'Nuevo movimiento';
-  document.getElementById('tx-date').value          = new Date().toISOString().slice(0, 10);
-  document.getElementById('tx-amount').value        = '';
-  document.getElementById('tx-desc').value          = '';
-  document.getElementById('tx-notes').value         = '';
-  document.getElementById('tx-error').textContent   = '';
+  document.getElementById('tx-date').value            = new Date().toISOString().slice(0, 10);
+  document.getElementById('tx-amount').value          = '';
+  document.getElementById('tx-desc').value            = '';
+  document.getElementById('tx-notes').value           = '';
+  document.getElementById('tx-error').textContent     = '';
   _setTxTypeUI('exp');
   _updateTxCatOptions();
   document.getElementById('tx-modal').classList.add('open');
 }
 
 function openEditTxModal(txId) {
-  const tx = getTxs().find(t => t.id === txId);
+  _txContext = { src: 'inicio', menuId: null };
+  const tx   = getTxs().find(t => t.id === txId);
   if (!tx) return;
-
   _txType = tx.type;
-  document.getElementById('tx-id').value            = txId;
+  document.getElementById('tx-id').value              = txId;
   document.getElementById('tx-modal-title').textContent = 'Editar movimiento';
-  document.getElementById('tx-date').value          = tx.date;
-  document.getElementById('tx-amount').value        = tx.amount;
-  document.getElementById('tx-desc').value          = tx.description;
-  document.getElementById('tx-notes').value         = tx.notes ?? '';
-  document.getElementById('tx-error').textContent   = '';
+  document.getElementById('tx-date').value            = tx.date;
+  document.getElementById('tx-amount').value          = tx.amount;
+  document.getElementById('tx-desc').value            = tx.description;
+  document.getElementById('tx-notes').value           = tx.notes ?? '';
+  document.getElementById('tx-error').textContent     = '';
   _setTxTypeUI(tx.type);
-  _updateTxCatOptions();                         // 3. populate
+  _updateTxCatOptions();                              // 3. populate
   document.getElementById('tx-cat').value = tx.category; // 4. restore
   document.getElementById('tx-modal').classList.add('open');
 }
@@ -297,20 +304,24 @@ function saveTx() {
   const errEl  = document.getElementById('tx-error');
   errEl.textContent = '';
 
-  if (!date)             { errEl.textContent = 'Fecha obligatoria.'; return; }
-  if (!amount || amount <= 0) { errEl.textContent = 'Importe debe ser mayor que 0.'; return; }
-  if (!desc)             { errEl.textContent = 'Descripción obligatoria.'; return; }
+  if (!date)                 { errEl.textContent = 'Fecha obligatoria.'; return; }
+  if (!amount || amount <= 0){ errEl.textContent = 'Importe debe ser mayor que 0.'; return; }
+  if (!desc)                 { errEl.textContent = 'Descripción obligatoria.'; return; }
 
   const fields = { date, amount, description: desc, type: _txType, category: cat, notes };
 
-  if (id) {
-    updateTx(parseInt(id, 10), fields);
+  if (_txContext.src === 'custom') {
+    const mid = _txContext.menuId;
+    if (id) updateMenuTx(mid, parseInt(id, 10), fields);
+    else    addMenuTx(mid, fields);
+    closeTxModal();
+    renderCustomMenu(mid);
   } else {
-    addTx(fields);
+    if (id) updateTx(parseInt(id, 10), fields);
+    else    addTx(fields);
+    closeTxModal();
+    renderInicio();
   }
-
-  closeTxModal();
-  renderInicio();
   showToast(id ? 'Movimiento actualizado' : 'Movimiento guardado');
 }
 

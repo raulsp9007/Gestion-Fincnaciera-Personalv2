@@ -2,7 +2,7 @@
 
 let _currentView = 'inicio';
 
-// ── Construir nav completo ────────────────────────────────
+// ── Build nav ─────────────────────────────────────────────
 function buildNav() {
   _buildSidebar();
   _buildBottomNav();
@@ -10,11 +10,21 @@ function buildNav() {
 
 function _buildSidebar() {
   const isAdmin = currentUser?.role === 'admin';
+  const menus   = getCustomMenus();
+
   document.getElementById('sidebar-nav').innerHTML = `
     <a class="${_currentView === 'inicio' ? 'active' : ''}" onclick="switchView('inicio')">
       <span class="ico">🏠</span> Inicio
     </a>
+    ${menus.map(m => `
+      <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
+         onclick="switchView('menu-${m.id}')">
+        <span class="ico">${esc(m.icon ?? '📋')}</span> ${esc(m.name)}
+      </a>`).join('')}
     ${isAdmin ? `
+    <a onclick="openNewMenuModal()">
+      <span class="ico">➕</span> Nuevo menú
+    </a>
     <a onclick="openAdminPanel()">
       <span class="ico">⚙️</span> Admin
     </a>` : ''}
@@ -26,11 +36,19 @@ function _buildSidebar() {
 
 function _buildBottomNav() {
   const initial = (currentUser?.name ?? '?').charAt(0).toUpperCase();
+  const menus   = getCustomMenus().slice(0, 2); // max 2 custom menus in bottom nav
+
   document.getElementById('bottom-nav').innerHTML = `
     <a class="${_currentView === 'inicio' ? 'active' : ''}" onclick="switchView('inicio')">
       <span class="bn-ico">🏠</span>
       <span>Inicio</span>
     </a>
+    ${menus.map(m => `
+      <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
+         onclick="switchView('menu-${m.id}')">
+        <span class="bn-ico">${esc(m.icon ?? '📋')}</span>
+        <span>${esc(m.name.slice(0, 8))}</span>
+      </a>`).join('')}
     <a onclick="openUserMenu()">
       <span class="bn-ico bn-avatar">${initial}</span>
     </a>
@@ -40,9 +58,25 @@ function _buildBottomNav() {
 // ── Routing ───────────────────────────────────────────────
 function switchView(viewId) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const target = document.getElementById('view-' + viewId);
-  if (target) target.classList.add('active');
+
+  if (viewId.startsWith('menu-')) {
+    document.getElementById('view-custom').classList.add('active');
+    renderCustomMenu(parseInt(viewId.slice(5), 10));
+  } else {
+    document.getElementById('view-' + viewId)?.classList.add('active');
+    if (viewId === 'inicio') renderInicio();
+  }
+
   _currentView = viewId;
-  document.getElementById('topbar-title').textContent = viewId === 'inicio' ? 'Inicio' : 'CashMap';
+  document.getElementById('topbar-title').textContent = _viewTitle(viewId);
   buildNav();
+}
+
+function _viewTitle(viewId) {
+  if (viewId === 'inicio') return 'Inicio';
+  if (viewId.startsWith('menu-')) {
+    const m = getCustomMenu(parseInt(viewId.slice(5), 10));
+    return m ? `${m.icon ?? '📋'} ${m.name}` : 'Menú';
+  }
+  return 'CashMap';
 }
