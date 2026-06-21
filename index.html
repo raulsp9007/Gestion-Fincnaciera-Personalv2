@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CashMap v2</title>
+<meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CashMap">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link rel="stylesheet" href="css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN (solo la primera vez — crear admin) ──── -->
+<div id="setup-screen" class="hidden">
+  <div class="setup-box">
+    <div style="font-size:2.5rem;margin-bottom:12px">💰</div>
+    <h2>Bienvenido a CashMap</h2>
+    <p class="setup-sub">Primera configuración — crea tu cuenta de administrador</p>
+    <div class="form-row">
+      <label>Nombre</label>
+      <input id="setup-name" type="text" placeholder="Tu nombre" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label>PIN (4–8 dígitos)</label>
+      <input id="setup-pin" type="password" inputmode="numeric" placeholder="••••" maxlength="8" autocomplete="new-password">
+    </div>
+    <div class="form-row">
+      <label>Confirmar PIN</label>
+      <input id="setup-pin2" type="password" inputmode="numeric" placeholder="••••" maxlength="8" autocomplete="new-password">
+    </div>
+    <div class="login-error" id="setup-error"></div>
+    <button class="btn btn-primary" onclick="submitSetup()">Crear cuenta</button>
+  </div>
+</div>
+
+<!-- ── LOGIN SCREEN ──────────────────────────────────────── -->
+<div id="login-screen" class="hidden">
+  <div class="login-box">
+    <div style="font-size:2.5rem;margin-bottom:10px">💰</div>
+    <h2>CashMap</h2>
+    <p>Gestión financiera personal</p>
+    <div class="form-row">
+      <label>Usuario</label>
+      <select id="login-user-sel"></select>
+    </div>
+    <div class="form-row">
+      <label>PIN</label>
+      <input id="login-pin" type="password" inputmode="numeric" placeholder="••••" maxlength="8" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn btn-primary" onclick="submitLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ── OFFLINE BAR ───────────────────────────────────────── -->
+<div id="offline-bar">
+  📡 Sin conexión — cambios guardados localmente
+  <button class="ob-retry" onclick="window.location.reload()">Reintentar</button>
+</div>
+
+<!-- ── APP SHELL (oculto hasta login) ───────────────────── -->
+<div id="app" class="hidden">
+
+  <!-- SIDEBAR (desktop) -->
+  <div id="sidebar">
+    <div class="brand">
+      <h1>💰 CashMap</h1>
+      <p id="sidebar-user-name">—</p>
+    </div>
+    <nav id="sidebar-nav">
+      <!-- generado por nav.js -->
+    </nav>
+    <div id="sync-area">
+      <div id="sync-badge" class="local">
+        <div class="dot"></div>
+        <span class="lbl" id="sync-lbl">Local</span>
+      </div>
+      <button id="btn-sync-now" onclick="forceSyncNow()">🔄 Sincronizar ahora</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <h2 id="topbar-title">Inicio</h2>
+      <div class="top-actions">
+        <button class="btn btn-ghost btn-sm" id="btn-new" onclick="openNewRecordModal()">+ Nuevo</button>
+        <button class="btn btn-ghost btn-sm" id="btn-admin" onclick="openAdminPanel()" style="display:none">⚙️ Admin</button>
+        <div id="user-badge" onclick="openUserMenu()">
+          <span id="topbar-user-name">—</span>
+          <span class="role-chip" id="topbar-role-chip"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT AREA -->
+    <div id="content">
+
+      <!-- VISTA: Inicio -->
+      <div id="view-inicio" class="view active">
+        <!-- renderizado por inicio.js -->
+        <div class="empty">Cargando…</div>
+      </div>
+
+      <!-- VISTA: Admin -->
+      <div id="view-admin" class="view">
+        <!-- renderizado por admin.js -->
+      </div>
+
+      <!-- VISTAS: Menús personalizados (generadas dinámicamente por nav.js) -->
+
+    </div><!-- /content -->
+
+  </div><!-- /main -->
+
+</div><!-- /app -->
+
+<!-- ── ADMIN ACTION SHEET (mobile) ──────────────────────── -->
+<div id="admin-sheet">
+  <div id="admin-sheet-bd" onclick="closeAdminSheet()"></div>
+  <div id="admin-sheet-panel">
+    <div id="admin-sheet-header">
+      <span id="admin-sheet-name"></span>
+      <span class="role-chip" id="admin-sheet-role"></span>
+    </div>
+    <button class="admin-sheet-btn" onclick="closeAdminSheet();openAdminPanel()">
+      <span>⚙️</span><span>Panel Admin</span>
+    </button>
+    <button class="admin-sheet-btn" onclick="closeAdminSheet();openCatsModal()">
+      <span>🏷️</span><span>Categorías</span>
+    </button>
+    <button class="admin-sheet-btn admin-sheet-logout" onclick="closeAdminSheet();logout()">
+      <span>🚪</span><span>Cerrar sesión</span>
+    </button>
+  </div>
+</div>
+
+<!-- ── TOAST ─────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── BOTTOM NAV (mobile) ───────────────────────────────── -->
+<nav id="bottom-nav">
+  <!-- generado por nav.js -->
+</nav>
+
+<!-- ── FAB (mobile) ──────────────────────────────────────── -->
+<button id="fab" onclick="openNewRecordModal()">
+  <span id="fab-ico">+</span>
+</button>
+
+<!-- ── CONFIRM DIALOG ────────────────────────────────────── -->
+<div id="confirm-overlay">
+  <div id="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCRIPTS ────────────────────────────────────────────── -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/gas.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/render/nav.js"></script>
+<script src="js/render/inicio.js"></script>
+<script src="js/render/custom-menu.js"></script>
+<script src="js/render/admin.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
