@@ -68,7 +68,6 @@ function openUserMenu() {
 
 // ── Stubs de fases futuras ────────────────────────────────
 function openCatsModal() { showToast('Próximamente', 'var(--yellow)'); }
-function forceSyncNow()  { showToast('Próximamente — Fase 5', 'var(--yellow)'); }
 
 // ── Pantallas ─────────────────────────────────────────────
 function _hideAllScreens() {
@@ -149,6 +148,7 @@ function startApp() {
   buildNav();
   switchView('inicio');
   renderInicio();
+  startSync();
 
   document.getElementById('app').classList.remove('hidden');
 }

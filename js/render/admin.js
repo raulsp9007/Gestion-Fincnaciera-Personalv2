@@ -3,6 +3,7 @@
 // ── Panel Admin — modal principal ─────────────────────────
 function openAdminPanel() {
   renderAdminUsers();
+  renderGasSection();
   document.getElementById('admin-modal').classList.add('open');
 }
 
@@ -99,6 +100,47 @@ async function submitUserForm() {
   closeUserForm();
   renderAdminUsers();
   showToast(id ? 'Usuario actualizado' : 'Usuario creado');
+}
+
+// ── Sección GAS ───────────────────────────────────────────
+function renderGasSection() {
+  const url = getGasUrl();
+  document.getElementById('admin-gas-url').value = url;
+  _setGasStatus(url ? 'saved' : 'empty');
+}
+
+function _setGasStatus(state, msg) {
+  const el = document.getElementById('admin-gas-status');
+  const map = {
+    empty:   { text: 'No configurada',  color: 'var(--text2)' },
+    saved:   { text: 'URL guardada',    color: 'var(--yellow)' },
+    testing: { text: 'Probando…',       color: 'var(--acc)' },
+    ok:      { text: msg ?? 'Conectado ✓', color: 'var(--green)' },
+    error:   { text: msg ?? 'Error',    color: 'var(--red)' },
+  };
+  const s = map[state] ?? map.empty;
+  el.textContent = s.text;
+  el.style.color = s.color;
+}
+
+function saveGasUrl() {
+  const url = document.getElementById('admin-gas-url').value.trim();
+  setGasUrl(url);
+  _setGasStatus(url ? 'saved' : 'empty');
+  showToast(url ? 'URL guardada' : 'URL eliminada');
+}
+
+async function testGasUrl() {
+  const url = document.getElementById('admin-gas-url').value.trim();
+  if (!url) { showToast('Introduce una URL primero', 'var(--yellow)'); return; }
+  setGasUrl(url);
+  _setGasStatus('testing');
+  try {
+    const r = await testGasConnection();
+    _setGasStatus('ok', `Conectado ✓ (v${r.version ?? '?'})`);
+  } catch (e) {
+    _setGasStatus('error', 'Error: ' + e.message);
+  }
 }
 
 // ── Eliminar ──────────────────────────────────────────────
