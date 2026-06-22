@@ -151,7 +151,49 @@ function _buildDeudaRow(d) {
 
 function _dRowTap(e, id) {
   if (e.target.closest('button')) return;
-  openDeudaModal(id);
+  if (window.innerWidth < 768) {
+    _openDeudaActionSheet(id);
+  } else {
+    openDeudaModal(id);
+  }
+}
+
+function _openDeudaActionSheet(id) {
+  const d = _getDeudas().find(x => x.id === id);
+  if (!d) return;
+
+  document.getElementById('deuda-action-sheet')?.remove();
+
+  const isPagado     = d.status === 'pagado';
+  const hasPayments  = (d.payments ?? []).length > 0;
+  const sheet = document.createElement('div');
+  sheet.id    = 'deuda-action-sheet';
+  sheet.style.cssText = `
+    position:fixed;bottom:0;left:0;right:0;z-index:1100;
+    background:var(--bg2);border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;padding:16px;
+    box-shadow:0 -4px 24px #0006;animation:slideUp .18s ease`;
+  sheet.innerHTML = `
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px"></div>
+    <div style="font-weight:700;margin-bottom:12px;font-size:.9rem">${esc(d.persona)}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-ghost" style="justify-content:flex-start;gap:10px" onclick="document.getElementById('deuda-action-sheet').remove();openDeudaModal(${id})">✏️ Editar</button>
+      ${!isPagado ? `<button class="btn btn-ghost" style="justify-content:flex-start;gap:10px;color:var(--green)" onclick="document.getElementById('deuda-action-sheet').remove();openPagoModal(${id})">💸 Registrar pago</button>` : ''}
+      ${hasPayments ? `<button class="btn btn-ghost" style="justify-content:flex-start;gap:10px" onclick="document.getElementById('deuda-action-sheet').remove();_toggleDeudaHistSheet(${id})">▶ Ver pagos</button>` : ''}
+      <button class="btn btn-ghost" style="justify-content:flex-start;gap:10px" onclick="document.getElementById('deuda-action-sheet').remove();toggleDeudaStatus(${id})">${isPagado ? '↩️ Reabrir' : '✅ Marcar pagado'}</button>
+    </div>`;
+
+  document.body.appendChild(sheet);
+
+  const dismiss = (ev) => {
+    if (!sheet.contains(ev.target)) { sheet.remove(); document.removeEventListener('pointerdown', dismiss); }
+  };
+  setTimeout(() => document.addEventListener('pointerdown', dismiss), 50);
+}
+
+function _toggleDeudaHistSheet(id) {
+  const btn = document.querySelector(`button[onclick*="_toggleDeudaHist(${id},"]`);
+  if (btn) { _toggleDeudaHist(id, btn); } else { _toggleDeudaHist(id, { closest: () => null, textContent: '▶' }); }
 }
 
 // ── Toggle historial inline ───────────────────────────────
