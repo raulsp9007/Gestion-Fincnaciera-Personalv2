@@ -326,7 +326,7 @@ function _menuTxRow(menu, tx, cats, curr) {
     <td class="amount ${tx.type}" style="white-space:nowrap">
       ${sign}${_fmtCurr(tx.amount, curr)}${_recBadge(tx)}
     </td>
-    <td style="font-weight:500">${esc(tx.description)}</td>
+    <td style="font-weight:500">${esc(tx.description)} ${attachBadge(tx.attachments)}</td>
     <td><span class="badge ${tx.type}">${typeLabel}</span></td>
     <td>
       <span class="cat-dot" style="background:${cat.color}"></span>
@@ -361,6 +361,7 @@ function openEditMenuTxModal(menuId, txId) {
   _updateTxCatOptions();                                            // 2. populate cats
   document.getElementById('tx-cat').value               = tx.category; // 3. restore cat
   _updateCatColorPicker();
+  initAttachModal(tx.attachments ?? []);
   document.getElementById('tx-modal').classList.add('open');
 }
 

@@ -174,7 +174,7 @@ function _buildTxRow(tx, cats) {
     <td class="amount ${tx.type}" style="white-space:nowrap">
       ${sign}${fmtMoney(tx.amount)}${_recBadge(tx)}
     </td>
-    <td style="font-weight:500">${esc(tx.description)}</td>
+    <td style="font-weight:500">${esc(tx.description)} ${attachBadge(tx.attachments)}</td>
     <td><span class="badge ${tx.type}">${typeLabel}</span></td>
     <td>
       <span class="cat-dot" style="background:${cat.color}"></span>
@@ -306,6 +306,7 @@ function openNewRecordModal() {
   document.getElementById('tx-type').value            = 'exp';
   _updateTxCatOptions();
   _updateCatColorPicker();
+  initAttachModal([]);
   document.getElementById('tx-modal').classList.add('open');
 }
 
@@ -326,6 +327,7 @@ function openEditTxModal(txId) {
   _updateTxCatOptions();                                           // 2. populate cats
   document.getElementById('tx-cat').value             = tx.category; // 3. restore cat
   _updateCatColorPicker();
+  initAttachModal(tx.attachments ?? []);
   document.getElementById('tx-modal').classList.add('open');
 }
 
@@ -342,10 +344,11 @@ function _updateTxCatOptions() {
 }
 
 function closeTxModal() {
+  discardNewAttachments();
   document.getElementById('tx-modal').classList.remove('open');
 }
 
-function saveTx() {
+async function saveTx() {
   const id     = document.getElementById('tx-id').value;
   const date   = document.getElementById('tx-date').value;
   const amount = parseFloat(document.getElementById('tx-amount').value);
@@ -360,22 +363,30 @@ function saveTx() {
   if (!amount || amount <= 0){ errEl.textContent = 'Importe debe ser mayor que 0.'; return; }
   if (!desc)                 { errEl.textContent = 'Descripción obligatoria.'; return; }
 
+  let attachments = [];
+  try {
+    attachments = await saveAllAttachments();
+  } catch (e) {
+    errEl.textContent = 'Error al guardar adjuntos: ' + e.message;
+    return;
+  }
+
   const recurring     = document.getElementById('tx-recurring').value || false;
   const recurringNext = recurring ? nextOccurrence(date, recurring) : undefined;
   const fields = { date, amount, description: desc, type, category: cat, notes,
-                   recurring, recurringNext };
+                   recurring, recurringNext, attachments };
 
   if (_txContext.src === 'custom') {
     const mid = _txContext.menuId;
     if (id) updateMenuTx(mid, parseInt(id, 10), fields);
     else    addMenuTx(mid, fields);
-    closeTxModal();
+    document.getElementById('tx-modal').classList.remove('open');
     renderCustomMenu(mid);
     onMenuSaved(mid);
   } else {
     if (id) updateTx(parseInt(id, 10), fields);
     else    addTx(fields);
-    closeTxModal();
+    document.getElementById('tx-modal').classList.remove('open');
     renderInicio();
   }
   showToast(id ? 'Movimiento actualizado' : 'Movimiento guardado');

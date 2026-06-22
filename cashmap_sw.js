@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'cashmap-v2-10';
+const CACHE_NAME = 'cashmap-v2-11';
 
 const PRECACHE = [
   './',
@@ -8,6 +8,7 @@ const PRECACHE = [
   './manifest.json',
   './icon.svg',
   './css/main.css',
+  './js/attachments.js',
   './js/config.js',
   './js/auth.js',
   './js/db.js',
