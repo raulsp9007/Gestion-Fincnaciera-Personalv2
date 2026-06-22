@@ -804,6 +804,7 @@ async function saveShareModal() {
   try {
     setSyncBadge('saving');
     await pushSharedConfig();
+    await pushMenuToGas(menuId); // sube filas existentes al sheet por primera vez
     setSyncBadge('ok');
     closeShareModal();
     buildNav();
