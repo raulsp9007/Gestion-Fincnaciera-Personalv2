@@ -1,0 +1,434 @@
+'use strict';
+
+// ── Helpers ───────────────────────────────────────────────
+function _fmtDeuda(n, curr) {
+  const formatted = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  }).format(Math.abs(n ?? 0));
+  return `${curr ?? ''}${formatted}`;
+}
+
+function deudaRemaining(d) {
+  return Math.max(0, Math.round(((d.amount ?? 0) - (d.paid ?? 0)) * 100) / 100);
+}
+
+function _statusBadge(status) {
+  const map = {
+    pendiente: { label: '⏳ Pendiente', color: 'var(--yellow)' },
+    parcial:   { label: '🔶 Parcial',   color: '#f97316' },
+    pagado:    { label: '✅ Pagado',    color: 'var(--green)' }
+  };
+  const s = map[status] ?? { label: status, color: 'var(--text2)' };
+  return `<span style="font-size:.72rem;font-weight:700;color:${s.color}">${s.label}</span>`;
+}
+
+function _progressBar(d) {
+  if (!d.amount) return '';
+  const pct   = Math.min(100, Math.round((d.paid ?? 0) / d.amount * 100));
+  const color = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
+  return `<div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden">
+    <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .3s"></div>
+  </div>`;
+}
+
+// ── Main render ───────────────────────────────────────────
+function renderDeudas() {
+  let list = [...(loadData().deudas ?? [])];
+
+  const s  = (document.getElementById('d-search')?.value ?? '').toLowerCase();
+  const tp = document.getElementById('d-type')?.value ?? '';
+  const st = document.getElementById('d-status')?.value ?? '';
+
+  if (s)  list = list.filter(d => d.persona.toLowerCase().includes(s) || (d.description ?? '').toLowerCase().includes(s));
+  if (tp) list = list.filter(d => d.type === tp);
+  if (st) list = list.filter(d => d.status === st);
+
+  list.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+
+  const active = list.filter(d => d.status !== 'pagado');
+  const paid   = list.filter(d => d.status === 'pagado');
+
+  const tbody  = document.getElementById('deudas-tbody');
+  const psec   = document.getElementById('deudas-pagadas-section');
+  if (!tbody) return;
+
+  document.getElementById('deudas-count').textContent = active.length + ' registro(s)';
+
+  tbody.innerHTML = active.length
+    ? active.map(_buildDeudaRow).join('')
+    : `<tr><td colspan="7" class="empty" style="padding:20px">
+         Sin deudas activas
+         <button class="btn btn-primary btn-sm" style="margin-left:10px" onclick="openDeudaModal()">+ Nueva deuda</button>
+       </td></tr>`;
+
+  if (paid.length) {
+    psec.style.display = '';
+    document.getElementById('deudas-pagadas-count').textContent = paid.length + ' registro(s)';
+    document.getElementById('deudas-pagadas-tbody').innerHTML = paid.map(_buildDeudaRow).join('');
+  } else {
+    psec.style.display = 'none';
+  }
+}
+
+function _buildDeudaRow(d) {
+  const curr      = d.currency ?? '$';
+  const typeLabel = d.type === 'por_cobrar' ? '💚 Me deben' : '🔴 Yo debo';
+  const typeColor = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
+  const hasPayments = (d.payments ?? []).length > 0;
+
+  return `<tr onclick="_dRowTap(event,${d.id})" style="cursor:pointer">
+    <td style="white-space:nowrap;color:var(--text2);font-size:.8rem">${fmtDate(d.date)}</td>
+    <td style="font-weight:600">${esc(d.persona)}</td>
+    <td style="font-size:.78rem;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description ?? '')}</td>
+    <td><span style="font-size:.72rem;font-weight:700;color:${typeColor}">${typeLabel}</span></td>
+    <td style="min-width:100px">
+      <div style="font-weight:700">${_fmtDeuda(d.amount, curr)}</div>
+      ${_progressBar(d)}
+    </td>
+    <td>${_statusBadge(d.status)}</td>
+    <td style="white-space:nowrap;text-align:right">
+      ${hasPayments ? `<button class="btn-icon" onclick="event.stopPropagation();_toggleDeudaHist(${d.id},this)" title="Ver pagos">▶</button>` : ''}
+      <button class="btn-icon" onclick="event.stopPropagation();openDeudaModal(${d.id})" title="Editar">✏️</button>
+      ${d.status !== 'pagado' ? `<button class="btn-icon" onclick="event.stopPropagation();openPagoModal(${d.id})" title="Registrar pago" style="color:var(--green)">💸</button>` : ''}
+      <button class="btn-icon" onclick="event.stopPropagation();toggleDeudaStatus(${d.id})" title="${d.status === 'pagado' ? 'Reabrir' : 'Marcar pagado'}">${d.status === 'pagado' ? '↩️' : '✅'}</button>
+    </td>
+  </tr>`;
+}
+
+function _dRowTap(e, id) {
+  if (e.target.closest('button')) return;
+  openDeudaModal(id);
+}
+
+// ── Toggle historial inline ───────────────────────────────
+function _toggleDeudaHist(deudaId, btn) {
+  const existing = document.getElementById(`dhist-${deudaId}`);
+  if (existing) { existing.remove(); btn.textContent = '▶'; return; }
+
+  btn.textContent = '▼';
+  const d        = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  if (!d) return;
+  const curr     = d.currency ?? '$';
+  const sign     = d.type === 'por_cobrar' ? '+' : '-';
+  const color    = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
+  const payments = (d.payments ?? []).slice().reverse();
+
+  btn.closest('tr').insertAdjacentHTML('afterend', `<tr id="dhist-${deudaId}" style="background:var(--bg3)">
+    <td colspan="7" style="padding:10px 16px">
+      <div style="font-size:.72rem;color:var(--text2);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Historial de pagos</div>
+      ${payments.length
+        ? payments.map(p => `
+          <div style="display:flex;gap:12px;padding:4px 0;border-bottom:1px solid var(--border);font-size:.78rem;align-items:center">
+            <span style="color:var(--text2);min-width:120px">${(p.datetime ?? p.date ?? '').replace('T', ' ')}</span>
+            <span style="font-weight:700;color:${color}">${sign}${_fmtDeuda(p.amount, curr)}</span>
+            <span style="color:var(--text2)">${esc(p.notes || '')}</span>
+          </div>`).join('')
+        : '<div style="font-size:.78rem;color:var(--text2)">Sin pagos registrados</div>'
+      }
+    </td>
+  </tr>`);
+}
+
+// ── CRUD — Deuda modal ────────────────────────────────────
+let _editingDeudaId = null;
+
+function openDeudaModal(id) {
+  _editingDeudaId = id ?? null;
+  const delBtn    = document.getElementById('deuda-del-btn');
+
+  if (id) {
+    const d = (loadData().deudas ?? []).find(x => x.id === id);
+    if (!d) return;
+    document.getElementById('deuda-modal-title').textContent = 'Editar deuda';
+    document.getElementById('deuda-id').value          = d.id;
+    document.getElementById('deuda-date').value        = (d.date ?? '').slice(0, 10);
+    document.getElementById('deuda-amount').value      = d.amount;
+    document.getElementById('deuda-persona').value     = d.persona ?? '';
+    document.getElementById('deuda-desc').value        = d.description ?? '';
+    document.getElementById('deuda-type').value        = d.type ?? 'por_cobrar';
+    document.getElementById('deuda-status').value      = d.status ?? 'pendiente';
+    document.getElementById('deuda-notes').value       = d.notes ?? '';
+    _setDeudaCurrSel(d.currency ?? '$');
+    delBtn.style.display = 'inline-flex';
+  } else {
+    document.getElementById('deuda-modal-title').textContent = 'Nueva deuda';
+    document.getElementById('deuda-id').value          = '';
+    document.getElementById('deuda-date').value        = new Date().toISOString().slice(0, 10);
+    document.getElementById('deuda-amount').value      = '';
+    document.getElementById('deuda-persona').value     = '';
+    document.getElementById('deuda-desc').value        = '';
+    document.getElementById('deuda-type').value        = 'por_cobrar';
+    document.getElementById('deuda-status').value      = 'pendiente';
+    document.getElementById('deuda-notes').value       = '';
+    _setDeudaCurrSel('$');
+    delBtn.style.display = 'none';
+  }
+  document.getElementById('deuda-modal').classList.add('open');
+}
+
+function closeDeudaModal() {
+  document.getElementById('deuda-modal').classList.remove('open');
+  _editingDeudaId = null;
+}
+
+function _setDeudaCurrSel(curr) {
+  const sel = document.getElementById('deuda-curr-sel');
+  const inp = document.getElementById('deuda-curr-inp');
+  if (['$', 'Zelle', 'CUP'].includes(curr)) {
+    sel.value = curr;
+    inp.style.display = 'none';
+  } else {
+    sel.value = 'custom';
+    inp.value = curr;
+    inp.style.display = '';
+  }
+}
+
+function updateDeudaCurrField(val) {
+  document.getElementById('deuda-curr-inp').style.display = val === 'custom' ? '' : 'none';
+}
+
+function saveDeuda() {
+  const id       = document.getElementById('deuda-id').value;
+  const date     = document.getElementById('deuda-date').value;
+  const amount   = parseFloat(document.getElementById('deuda-amount').value);
+  const persona  = document.getElementById('deuda-persona').value.trim();
+  const desc     = document.getElementById('deuda-desc').value.trim();
+  const type     = document.getElementById('deuda-type').value;
+  const status   = document.getElementById('deuda-status').value;
+  const notes    = document.getElementById('deuda-notes').value.trim();
+  const currSel  = document.getElementById('deuda-curr-sel').value;
+  const currency = currSel === 'custom'
+    ? (document.getElementById('deuda-curr-inp').value.trim() || '$')
+    : currSel;
+
+  if (!date || isNaN(amount) || amount <= 0 || !persona) {
+    showToast('Completa fecha, monto y persona', 'var(--red)'); return;
+  }
+
+  const d = loadData();
+  if (!d.deudas) d.deudas = [];
+
+  if (id) {
+    const idx = d.deudas.findIndex(x => x.id === parseInt(id, 10));
+    if (idx >= 0) {
+      d.deudas[idx] = { ...d.deudas[idx], date, amount, persona, description: desc, type, status, notes, currency, updatedAt: new Date().toISOString() };
+    }
+  } else {
+    const nextId = d.deudas.length ? Math.max(...d.deudas.map(x => x.id)) + 1 : 1;
+    d.deudas.push({ id: nextId, date, amount, persona, description: desc, type, status, notes, currency, paid: 0, payments: [], updatedAt: new Date().toISOString() });
+  }
+
+  saveData();
+  closeDeudaModal();
+  renderDeudas();
+  showToast(id ? 'Deuda actualizada' : 'Deuda creada');
+}
+
+function confirmDeleteDeuda() {
+  if (!_editingDeudaId) return;
+  const id = _editingDeudaId;
+  showConfirm('¿Eliminar esta deuda y todos sus pagos?', () => {
+    const d = loadData();
+    d.deudas = (d.deudas ?? []).filter(x => x.id !== id);
+    saveData();
+    closeDeudaModal();
+    renderDeudas();
+    showToast('Deuda eliminada', 'var(--red)');
+  }, { icon: '💳', okLabel: 'Eliminar' });
+}
+
+function toggleDeudaStatus(id) {
+  const d = loadData();
+  const deuda = (d.deudas ?? []).find(x => x.id === id);
+  if (!deuda) return;
+  deuda.status     = deuda.status === 'pagado' ? 'pendiente' : 'pagado';
+  deuda.updatedAt  = new Date().toISOString();
+  saveData();
+  renderDeudas();
+}
+
+// ── recalcDeudaPaid ───────────────────────────────────────
+function _recalcDeudaPaid(d) {
+  d.paid = Math.round((d.payments ?? []).reduce((s, p) => s + p.amount, 0) * 100) / 100;
+  const total     = Math.round((d.amount ?? 0) * 100) / 100;
+  const wasActive = d.status !== 'pagado';
+  if (d.paid <= 0) {
+    d.status = 'pendiente';
+  } else if (d.paid >= total) {
+    d.status = 'pagado';
+    d.paid   = total;
+    if (wasActive) setTimeout(() => showToast('✅ ¡Deuda con ' + d.persona + ' saldada!', 'var(--green)'), 200);
+  } else {
+    d.status = 'parcial';
+  }
+}
+
+// ── PAGO MODAL ────────────────────────────────────────────
+function openPagoModal(deudaId) {
+  const d = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  if (!d) return;
+
+  const curr      = d.currency ?? '$';
+  const paid      = d.paid ?? 0;
+  const remaining = deudaRemaining(d);
+  const typeLabel = d.type === 'por_cobrar' ? 'Préstamo dado' : 'Préstamo recibido';
+  const saldada   = remaining <= 0;
+
+  document.getElementById('pago-modal-title').textContent = '💸 Deuda — ' + d.persona;
+  document.getElementById('pago-deuda-id').value          = deudaId;
+
+  document.getElementById('pago-ctx').innerHTML = `
+    <div class="pago-ctx-item"><div class="lbl">Persona</div><div class="val">${esc(d.persona)}</div></div>
+    <div class="pago-ctx-item"><div class="lbl">Tipo</div><div class="val">${typeLabel}</div></div>
+    <div class="pago-ctx-item"><div class="lbl">Total deuda</div><div class="val">${_fmtDeuda(d.amount, curr)}</div></div>
+    <div class="pago-ctx-item"><div class="lbl">Total abonado</div><div class="val" style="color:var(--green)">${_fmtDeuda(paid, curr)}</div></div>
+    ${d.description ? `<div class="pago-ctx-item" style="grid-column:1/-1"><div class="lbl">Descripción</div><div class="val" style="font-size:.82rem">${esc(d.description)}</div></div>` : ''}
+    <div class="pago-ctx-item" style="grid-column:1/-1">
+      ${saldada
+        ? `<div style="color:var(--green);font-weight:700;font-size:.88rem">✅ Deuda saldada completamente</div>`
+        : `<div class="lbl">Restante</div><div class="val" style="color:var(--yellow);font-size:1.1rem">${_fmtDeuda(remaining, curr)}</div>`
+      }
+    </div>
+  `;
+
+  document.getElementById('pago-edit-idx').value = '-1';
+  cancelEditPago(true);
+
+  const payments = d.payments ?? [];
+  const wrap     = document.getElementById('pago-history-wrap');
+  if (payments.length) { wrap.style.display = ''; renderPagoHistory(deudaId); }
+  else                 { wrap.style.display = 'none'; }
+
+  const formEl  = document.getElementById('pago-form-section');
+  const saveBtn = document.getElementById('pago-save-btn');
+  if (formEl)  formEl.style.display  = saldada ? 'none' : '';
+  if (saveBtn) saveBtn.style.display = saldada ? 'none' : '';
+
+  if (!saldada) {
+    const now     = new Date();
+    const localDT = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('pago-datetime').value = localDT;
+    document.getElementById('pago-amount').value   = remaining.toFixed(2);
+    document.getElementById('pago-notes').value    = '';
+  }
+
+  document.getElementById('pago-modal').classList.add('open');
+}
+
+function closePagoModal() {
+  document.getElementById('pago-modal').classList.remove('open');
+}
+
+function savePago() {
+  const deudaId = parseInt(document.getElementById('pago-deuda-id').value, 10);
+  const editIdx = parseInt(document.getElementById('pago-edit-idx').value, 10);
+  const datetime = document.getElementById('pago-datetime').value;
+  const amount   = parseFloat(document.getElementById('pago-amount').value);
+  const notes    = document.getElementById('pago-notes').value.trim();
+
+  if (!datetime || isNaN(amount) || amount <= 0) {
+    showToast('Completa fecha y monto', 'var(--red)'); return;
+  }
+
+  const data = loadData();
+  const d    = (data.deudas ?? []).find(x => x.id === deudaId);
+  if (!d) return;
+  if (!d.payments) d.payments = [];
+
+  if (editIdx >= 0 && editIdx < d.payments.length) {
+    d.payments[editIdx] = { datetime, amount, notes };
+  } else {
+    d.payments.push({ datetime, amount, notes });
+  }
+
+  _recalcDeudaPaid(d);
+  d.updatedAt = new Date().toISOString();
+  saveData();
+  closePagoModal();
+  renderDeudas();
+  showToast(editIdx >= 0 ? 'Pago actualizado' : 'Pago registrado', 'var(--green)');
+}
+
+function renderPagoHistory(deudaId) {
+  const d = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  if (!d) return;
+
+  const curr    = d.currency ?? '$';
+  const sign    = d.type === 'por_cobrar' ? '+' : '-';
+  const color   = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
+  const indexed = (d.payments ?? []).map((p, i) => ({ ...p, _idx: i })).reverse();
+
+  document.getElementById('pago-history-list').innerHTML = indexed.map(p => `
+    <div class="ph-item" id="ph-item-${p._idx}">
+      <div class="ph-left">
+        <div class="ph-dt">${(p.datetime ?? p.date ?? '').replace('T', ' ')}</div>
+        <div class="ph-note">${esc(p.notes || 'Sin nota')}</div>
+      </div>
+      <div class="ph-amount" style="font-weight:700;color:${color}">${sign}${_fmtDeuda(p.amount, curr)}</div>
+      <div class="ph-actions">
+        <button class="btn-icon" onclick="editPagoItem(${deudaId},${p._idx})" title="Editar" style="font-size:.85rem">✏️</button>
+        <button class="btn-icon" onclick="deletePagoItem(${deudaId},${p._idx})" title="Eliminar" style="font-size:.85rem;color:var(--red)">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function editPagoItem(deudaId, pIdx) {
+  const d = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  if (!d || !d.payments[pIdx]) return;
+  const p = d.payments[pIdx];
+
+  document.querySelectorAll('.ph-item').forEach(el => el.classList.remove('editing-highlight'));
+  document.getElementById('ph-item-' + pIdx)?.classList.add('editing-highlight');
+
+  document.getElementById('pago-edit-idx').value         = pIdx;
+  document.getElementById('pago-datetime').value         = p.datetime || '';
+  document.getElementById('pago-amount').value           = p.amount;
+  document.getElementById('pago-notes').value            = p.notes || '';
+  document.getElementById('pago-form-title').textContent = '✏️ Editando pago';
+  document.getElementById('pago-save-btn').textContent   = 'Actualizar pago';
+  document.getElementById('pago-cancel-edit-btn').style.display = '';
+  document.getElementById('pago-form-section').style.display    = '';
+  document.getElementById('pago-save-btn').style.display        = '';
+  document.getElementById('pago-form-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelEditPago(silent) {
+  document.getElementById('pago-edit-idx').value         = '-1';
+  document.getElementById('pago-form-title').textContent = 'Nuevo pago';
+  document.getElementById('pago-save-btn').textContent   = 'Registrar pago';
+  document.getElementById('pago-cancel-edit-btn').style.display = 'none';
+  document.querySelectorAll('.ph-item').forEach(el => el.classList.remove('editing-highlight'));
+
+  if (!silent) {
+    const deudaId = parseInt(document.getElementById('pago-deuda-id').value, 10);
+    const d       = (loadData().deudas ?? []).find(x => x.id === deudaId);
+    if (d) {
+      const remaining = deudaRemaining(d);
+      const now       = new Date();
+      const localDT   = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      document.getElementById('pago-datetime').value = localDT;
+      document.getElementById('pago-amount').value   = remaining > 0 ? remaining.toFixed(2) : '';
+      document.getElementById('pago-notes').value    = '';
+    }
+  }
+}
+
+function deletePagoItem(deudaId, pIdx) {
+  const data = loadData();
+  const d    = (data.deudas ?? []).find(x => x.id === deudaId);
+  if (!d || !d.payments[pIdx]) return;
+  const p = d.payments[pIdx];
+  showConfirm(`¿Eliminar pago de ${_fmtDeuda(p.amount, d.currency ?? '$')}?`, () => {
+    d.payments.splice(pIdx, 1);
+    _recalcDeudaPaid(d);
+    d.updatedAt = new Date().toISOString();
+    const editIdx = parseInt(document.getElementById('pago-edit-idx').value, 10);
+    if (editIdx === pIdx) cancelEditPago(true);
+    saveData();
+    openPagoModal(deudaId);
+    renderDeudas();
+    showToast('Pago eliminado', 'var(--red)');
+  }, { icon: '💸', okLabel: 'Eliminar pago' });
+}

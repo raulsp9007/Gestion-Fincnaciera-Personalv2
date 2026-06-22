@@ -17,6 +17,7 @@ const SAVE_DEBOUNCE            = 0;       // sin debounce — push inmediato par
 const DEFAULT_DATA = {
   version:     2,
   inicio:      [],
+  deudas:      [],
   customMenus: [],
   globalCats:  { inc: {}, exp: {} },
   budgets:     {},

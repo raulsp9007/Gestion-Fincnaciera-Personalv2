@@ -117,6 +117,52 @@
         <!-- renderizado por admin.js -->
       </div>
 
+      <!-- VISTA: Deudas -->
+      <div id="view-deudas" class="view">
+        <div class="filters" style="align-items:center">
+          <input id="d-search" type="search" placeholder="🔍 Buscar persona o descripción…"
+                 oninput="renderDeudas()" style="flex:1;min-width:160px">
+          <select id="d-type" onchange="renderDeudas()">
+            <option value="">Todos los tipos</option>
+            <option value="por_cobrar">💚 Me deben</option>
+            <option value="por_pagar">🔴 Yo debo</option>
+          </select>
+          <select id="d-status" onchange="renderDeudas()">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="parcial">🔶 Parcial</option>
+            <option value="pagado">✅ Pagado</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="openDeudaModal()">+ Nueva deuda</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--text2);margin-bottom:10px" id="deudas-count"></div>
+        <div style="overflow-x:auto">
+          <table class="history-table" style="width:100%">
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Persona</th><th>Descripción</th>
+                <th>Tipo</th><th>Monto</th><th>Estado</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="deudas-tbody"></tbody>
+          </table>
+        </div>
+        <div id="deudas-pagadas-section" style="display:none">
+          <div class="deudas-section-title">Deudas saldadas — <span id="deudas-pagadas-count"></span></div>
+          <div style="overflow-x:auto">
+            <table class="history-table" style="width:100%;opacity:.65">
+              <thead>
+                <tr>
+                  <th>Fecha</th><th>Persona</th><th>Descripción</th>
+                  <th>Tipo</th><th>Monto</th><th>Estado</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="deudas-pagadas-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- VISTA: Menú personalizado (contenedor único, renderizado dinámico) -->
       <div id="view-custom" class="view"></div>
 
@@ -428,6 +474,110 @@
   </div>
 </div>
 
+<!-- ── DEUDA MODAL ────────────────────────────────────────── -->
+<div class="modal-overlay" id="deuda-modal">
+  <div class="modal" style="width:460px">
+    <h3 id="deuda-modal-title">Nueva deuda</h3>
+    <input type="hidden" id="deuda-id">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Fecha</label>
+        <input id="deuda-date" type="date">
+      </div>
+      <div class="form-row">
+        <label>Monto</label>
+        <div style="display:flex;gap:8px">
+          <select id="deuda-curr-sel" onchange="updateDeudaCurrField(this.value)"
+                  style="flex-shrink:0;width:100px;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+            <option value="$">$</option>
+            <option value="Zelle">Zelle</option>
+            <option value="CUP">CUP</option>
+            <option value="custom">Otra…</option>
+          </select>
+          <input id="deuda-curr-inp" type="text" placeholder="Moneda" style="display:none;width:80px">
+          <input id="deuda-amount" type="number" min="0.01" step="0.01" placeholder="0.00" style="flex:1">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Persona</label>
+        <input id="deuda-persona" type="text" placeholder="Nombre">
+      </div>
+      <div class="form-row">
+        <label>Descripción</label>
+        <input id="deuda-desc" type="text" placeholder="Motivo de la deuda">
+      </div>
+      <div class="form-row">
+        <label>Tipo</label>
+        <select id="deuda-type" style="background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+          <option value="por_cobrar">💚 Me deben</option>
+          <option value="por_pagar">🔴 Yo debo</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Estado</label>
+        <select id="deuda-status" style="background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+          <option value="pendiente">⏳ Pendiente</option>
+          <option value="parcial">🔶 Parcial</option>
+          <option value="pagado">✅ Pagado</option>
+        </select>
+      </div>
+      <div class="form-row" style="grid-column:1/-1">
+        <label>Notas</label>
+        <textarea id="deuda-notes" rows="2" placeholder="Opcional…"
+                  style="background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:.85rem;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="deuda-del-btn" style="display:none;margin-right:auto" onclick="confirmDeleteDeuda()">🗑 Eliminar</button>
+      <button class="btn btn-ghost"   onclick="closeDeudaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDeuda()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGO MODAL ──────────────────────────────────────────── -->
+<div class="modal-overlay" id="pago-modal">
+  <div class="modal" style="width:480px">
+    <h3 id="pago-modal-title">💸 Registrar pago</h3>
+    <input type="hidden" id="pago-deuda-id">
+    <input type="hidden" id="pago-edit-idx" value="-1">
+
+    <!-- Contexto de la deuda -->
+    <div class="pago-ctx" id="pago-ctx"></div>
+
+    <!-- Historial de pagos -->
+    <div class="pago-history" id="pago-history-wrap" style="display:none">
+      <div class="pago-history-title">Historial de pagos</div>
+      <div id="pago-history-list"></div>
+    </div>
+
+    <!-- Formulario nuevo pago -->
+    <div id="pago-form-section">
+      <div class="pago-form-title" id="pago-form-title">Nuevo pago</div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Fecha y hora</label>
+          <input id="pago-datetime" type="datetime-local">
+        </div>
+        <div class="form-row">
+          <label>Monto</label>
+          <input id="pago-amount" type="number" min="0.01" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-row" style="grid-column:1/-1">
+          <label>Notas</label>
+          <input id="pago-notes" type="text" placeholder="Opcional…">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button id="pago-cancel-edit-btn" class="btn btn-ghost btn-sm" style="display:none;margin-right:auto" onclick="cancelEditPago()">✕ Cancelar edición</button>
+      <button class="btn btn-ghost"    onclick="closePagoModal()">Cerrar</button>
+      <button class="btn btn-primary"  id="pago-save-btn" onclick="savePago()">Registrar pago</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── CONFIRM DIALOG ────────────────────────────────────── -->
 <div id="confirm-overlay">
   <div id="confirm-box">
@@ -449,6 +599,7 @@
 <script src="js/sync.js"></script>
 <script src="js/render/nav.js"></script>
 <script src="js/render/inicio.js"></script>
+<script src="js/render/deudas.js"></script>
 <script src="js/render/custom-menu.js"></script>
 <script src="js/render/admin.js"></script>
 <script src="js/main.js"></script>

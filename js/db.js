@@ -255,6 +255,33 @@ function importV1Data(raw) {
     stats.menuTxs += data.length;
   }
 
+  // ── Deudas (v1) ──────────────────────────────────────
+  if (isV1 && raw.deudas?.length) {
+    if (!d.deudas) d.deudas = [];
+    let nextDeudaId = d.deudas.length ? Math.max(...d.deudas.map(x => x.id)) + 1 : 1;
+    for (const dv1 of raw.deudas) {
+      d.deudas.push({
+        id:          nextDeudaId++,
+        date:        String(dv1.date || '').slice(0, 10),
+        amount:      Number(dv1.amount) || 0,
+        persona:     String(dv1.persona || ''),
+        description: String(dv1.description || ''),
+        type:        dv1.type === 'por_pagar' ? 'por_pagar' : 'por_cobrar',
+        status:      dv1.status ?? 'pendiente',
+        notes:       String(dv1.notes || ''),
+        currency:    String(dv1.currency || '$'),
+        paid:        Number(dv1.paid) || 0,
+        payments:    (dv1.payments ?? []).map(p => ({
+          datetime: p.datetime ?? p.date ?? '',
+          amount:   Number(p.amount) || 0,
+          notes:    String(p.notes || '')
+        })),
+        updatedAt:   dv1.updatedAt ?? new Date().toISOString()
+      });
+      stats.txs++;
+    }
+  }
+
   // ── homeTxs (v1) → menú "Hogar (importado)" ──────────
   if (isV1 && raw.homeTxs?.length) {
     const newMenuId = nextMenuId++;

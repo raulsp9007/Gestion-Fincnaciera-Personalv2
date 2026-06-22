@@ -16,6 +16,9 @@ function _buildSidebar() {
     <a class="${_currentView === 'inicio' ? 'active' : ''}" onclick="switchView('inicio')">
       <span class="ico">🏠</span> Inicio
     </a>
+    <a class="${_currentView === 'deudas' ? 'active' : ''}" onclick="switchView('deudas')">
+      <span class="ico">💳</span> Deudas
+    </a>
     ${menus.map(m => `
       <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
          onclick="switchView('menu-${m.id}')">
@@ -70,7 +73,8 @@ function switchView(viewId) {
     renderCustomMenu(parseInt(viewId.slice(5), 10));
   } else {
     document.getElementById('view-' + viewId)?.classList.add('active');
-    if (viewId === 'inicio') renderInicio();
+    if (viewId === 'inicio')  renderInicio();
+    if (viewId === 'deudas')  renderDeudas();
   }
 
   _currentView = viewId;
@@ -79,7 +83,8 @@ function switchView(viewId) {
 }
 
 function _viewTitle(viewId) {
-  if (viewId === 'inicio') return 'Inicio';
+  if (viewId === 'inicio')  return 'Inicio';
+  if (viewId === 'deudas')  return '💳 Deudas';
   if (viewId.startsWith('menu-')) {
     const m = getCustomMenu(parseInt(viewId.slice(5), 10));
     return m ? `${m.icon ?? '📋'} ${m.name}` : 'Menú';

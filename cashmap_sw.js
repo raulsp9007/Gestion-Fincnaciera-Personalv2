@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'cashmap-v2-14';
+const CACHE_NAME = 'cashmap-v2-15';
 
 const PRECACHE = [
   './',
@@ -16,6 +16,7 @@ const PRECACHE = [
   './js/sync.js',
   './js/render/nav.js',
   './js/render/inicio.js',
+  './js/render/deudas.js',
   './js/render/custom-menu.js',
   './js/render/admin.js',
   './js/main.js'

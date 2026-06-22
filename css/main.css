@@ -105,6 +105,22 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .ovc-chart-label{font-size:.65rem;color:var(--text2);font-weight:600;margin-bottom:4px}
 .ovc-empty-chart{display:flex;align-items:center;justify-content:center;height:100%;font-size:.75rem;color:var(--text2);font-style:italic}
 
+/* ── DEUDAS ──────────────────────────────────────────────── */
+.pago-ctx{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:14px}
+.pago-ctx-item .lbl{font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.pago-ctx-item .val{font-size:.88rem;font-weight:700}
+.pago-history{margin-bottom:14px}
+.pago-history-title{font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.ph-item{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg3);border-radius:8px;margin-bottom:5px;transition:background .15s}
+.ph-item.editing-highlight{background:rgba(99,102,241,.12);outline:1px solid var(--acc)}
+.ph-left{flex:1;min-width:0}
+.ph-dt{font-size:.75rem;color:var(--text2)}
+.ph-note{font-size:.78rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ph-amount{font-size:.88rem;white-space:nowrap;flex-shrink:0}
+.ph-actions{display:flex;gap:3px;flex-shrink:0}
+.deudas-section-title{font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:12px 0 6px;border-top:1px solid var(--border);margin-top:10px}
+.pago-form-title{font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:8px}
+
 /* ── ATTACHMENTS ─────────────────────────────────────────── */
 .attach-row{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg3);border-radius:8px;margin-bottom:4px}
 .attach-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem}
