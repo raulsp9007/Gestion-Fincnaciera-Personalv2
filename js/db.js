@@ -207,7 +207,7 @@ function importV1Data(raw) {
       date:        String(tx.date || '').slice(0, 10),
       amount:      Number(tx.amount) || 0,
       description: String(tx.description || ''),
-      type:        String(tx.type || 'exp'),
+      type:        _normType(tx.type),
       category:    String(tx.category || ''),
       notes:       String(tx.notes || '')
     });
@@ -241,7 +241,7 @@ function importV1Data(raw) {
       date:        String(tx.date || '').slice(0, 10),
       amount:      Number(tx.amount) || 0,
       description: String(tx.description || ''),
-      type:        String(tx.type || 'exp'),
+      type:        _normType(tx.type),
       category:    String(tx.category || ''),
       notes:       String(tx.notes || ''),
       updatedAt:   tx.updatedAt ?? new Date().toISOString()
@@ -264,7 +264,7 @@ function importV1Data(raw) {
       date:        String(tx.date || '').slice(0, 10),
       amount:      Number(tx.amount) || 0,
       description: String(tx.description || ''),
-      type:        String(tx.type || 'exp'),
+      type:        _normType(tx.type),
       category:    String(tx.category || ''),
       notes:       String(tx.notes || ''),
       updatedAt:   new Date().toISOString()
@@ -280,6 +280,30 @@ function importV1Data(raw) {
 
   saveData();
   return stats;
+}
+
+// ── Normalizar tipo v1→v2 ────────────────────────────────
+function _normType(t) {
+  if (t === 'income')  return 'inc';
+  if (t === 'expense') return 'exp';
+  return (t === 'inc' || t === 'exp') ? t : 'exp';
+}
+
+// Migración única: corrige income/expense guardados en localStorage
+function migrateTypes() {
+  const d = loadData();
+  let changed = false;
+  for (const tx of d.inicio) {
+    const fixed = _normType(tx.type);
+    if (fixed !== tx.type) { tx.type = fixed; changed = true; }
+  }
+  for (const m of d.customMenus) {
+    for (const tx of m.data) {
+      const fixed = _normType(tx.type);
+      if (fixed !== tx.type) { tx.type = fixed; changed = true; }
+    }
+  }
+  if (changed) saveData();
 }
 
 // ── Recurrencia ───────────────────────────────────────────
@@ -351,7 +375,7 @@ function importMenuTxs(menuId, rawTxs) {
       date,
       amount:      Number(tx.amount) || 0,
       description: String(tx.description || ''),
-      type:        String(tx.type || 'exp'),
+      type:        _normType(tx.type),
       category:    String(tx.category || ''),
       notes:       String(tx.notes || ''),
       updatedAt:   new Date().toISOString()
@@ -361,6 +385,19 @@ function importMenuTxs(menuId, rawTxs) {
   m.nextDataId = nextId;
   saveData();
   return count;
+}
+
+// ── Merge globalCats from external JSON ───────────────────
+function mergeImportedCats(raw) {
+  if (!raw.globalCats) return;
+  const d = loadData();
+  for (const side of ['inc', 'exp']) {
+    if (!d.globalCats[side]) d.globalCats[side] = {};
+    for (const [key, cat] of Object.entries(raw.globalCats[side] ?? {})) {
+      if (!d.globalCats[side][key]) d.globalCats[side][key] = cat;
+    }
+  }
+  saveData();
 }
 
 // ── Presupuestos ──────────────────────────────────────────

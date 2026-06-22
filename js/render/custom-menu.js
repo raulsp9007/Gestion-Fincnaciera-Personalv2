@@ -295,12 +295,17 @@ function handleMenuImportFile(input) {
 
     const allTxs = groups.flatMap(g => g.data);
     const menu   = getCustomMenu(menuId);
+    const catCount = Object.keys(raw.globalCats?.inc ?? {}).length
+                   + Object.keys(raw.globalCats?.exp ?? {}).length;
+    const catNote  = catCount ? ` + ${catCount} categorías` : '';
+
     showConfirm(
-      `¿Importar ${allTxs.length} movimientos al menú "${menu?.name ?? ''}"?\n• ` + groups.map(g => g.label).join('\n• '),
+      `¿Importar ${allTxs.length} movimientos${catNote} al menú "${menu?.name ?? ''}"?\n• ` + groups.map(g => g.label).join('\n• '),
       () => {
+        mergeImportedCats(raw);
         const count = importMenuTxs(menuId, allTxs);
         renderCustomMenu(menuId);
-        showToast(`Importados ${count} movimientos ✓`);
+        showToast(`Importados ${count} movimientos${catNote} ✓`);
       },
       { icon: '📥', okLabel: 'Importar' }
     );

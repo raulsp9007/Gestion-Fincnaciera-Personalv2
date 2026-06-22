@@ -169,6 +169,7 @@ function startApp() {
   const btnAdmin = document.getElementById('btn-admin');
   if (btnAdmin) btnAdmin.style.display = currentUser.role === 'admin' ? '' : 'none';
 
+  try { migrateTypes(); } catch (e) { console.error('migrateTypes:', e); }
   buildNav();
   switchView('inicio');
   try { processRecurringTxs(); } catch (e) { console.error('processRecurringTxs:', e); }
