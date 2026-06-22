@@ -39,6 +39,7 @@ function _buildSidebar() {
     <a onclick="openAdminPanel()">
       <span class="ico">⚙️</span> Admin
     </a>` : ''}
+    ${_buildGasIdentityNav()}
     <a class="nav-logout" onclick="logout()">
       <span class="ico">🚪</span> Cerrar sesión
     </a>
@@ -82,6 +83,22 @@ function switchView(viewId) {
   _currentView = viewId;
   document.getElementById('topbar-title').textContent = _viewTitle(viewId);
   buildNav();
+}
+
+function _buildGasIdentityNav() {
+  const id = (typeof getGasIdentity === 'function') ? getGasIdentity() : null;
+  if (id) {
+    return `
+      <div style="margin:8px 0 4px;padding:8px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Servidor conectado</div>
+        <div style="font-size:.78rem;font-weight:600;color:var(--green);margin-bottom:6px">🔗 ${esc(id.username)}</div>
+        <a onclick="disconnectGasIdentity()" style="font-size:.7rem;color:var(--red);cursor:pointer;text-decoration:none;display:block">Desconectar</a>
+      </div>`;
+  }
+  return `
+    <a onclick="openGasConnectModal()" style="color:var(--text2);font-size:.82rem">
+      <span class="ico">🔗</span> Conectar servidor
+    </a>`;
 }
 
 function _viewTitle(viewId) {

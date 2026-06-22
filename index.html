@@ -518,6 +518,34 @@
   </div>
 </div>
 
+<!-- ── GAS CONNECT MODAL ──────────────────────────────────── -->
+<div class="modal-overlay" id="gas-connect-modal">
+  <div class="modal" style="width:440px">
+    <h3>🔗 Conectar al servidor</h3>
+    <p style="font-size:.82rem;color:var(--text2);margin-bottom:16px">
+      Ingresa las credenciales que el administrador del servidor te proporcionó.
+      Tu cuenta local no se modifica.
+    </p>
+    <div class="form-row">
+      <label>URL del servidor</label>
+      <input id="gc-url" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="form-row">
+      <label>Tu usuario en el servidor</label>
+      <input id="gc-username" type="text" placeholder="Nombre exacto registrado" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label>PIN del servidor</label>
+      <input id="gc-pin" type="password" inputmode="numeric" placeholder="••••" maxlength="8" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="gc-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeGasConnectModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitGasConnect()">Conectar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── SHARE MENU MODAL ───────────────────────────────────── -->
 <div class="modal-overlay" id="share-modal">
   <div class="modal" style="width:460px">
@@ -667,6 +695,7 @@
 <script src="js/render/custom-menu.js"></script>
 <script src="js/render/admin.js"></script>
 <script src="js/autosave.js"></script>
+<script src="js/gas-identity.js"></script>
 <script src="js/main.js"></script>
 <script>
   if ('serviceWorker' in navigator) {

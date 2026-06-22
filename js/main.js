@@ -206,6 +206,7 @@ function startApp() {
   switchView('inicio');
   try { processRecurringTxs(); } catch (e) { console.error('processRecurringTxs:', e); }
   renderInicio();
+  applyGasIdentity(); // restaura GAS URL desde identidad guardada antes de startSync
   startSync();
   startAutosave();
 
