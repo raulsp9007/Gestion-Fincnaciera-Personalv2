@@ -125,6 +125,8 @@ function renderDeudas(sourceId) {
 }
 
 function _buildDeudaRow(d) {
+  if (window.innerWidth < 768) return _buildDeudaMobileCard(d);
+
   const curr      = d.currency ?? '$';
   const typeLabel = d.type === 'por_cobrar' ? '💚 Me deben' : '🔴 Yo debo';
   const typeColor = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
@@ -134,7 +136,7 @@ function _buildDeudaRow(d) {
     <td style="white-space:nowrap;color:var(--text2);font-size:.8rem">${_fmtDeudaDate(d.date)}</td>
     <td style="font-weight:600">${esc(d.persona)}</td>
     <td style="font-size:.78rem;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description ?? '')}</td>
-    <td><span style="font-size:.72rem;font-weight:700;color:${typeColor}">${typeLabel}</span></td>
+    <td><span style="font-size:.72rem;font-weight:700;color:${typeColor};white-space:nowrap">${typeLabel}</span></td>
     <td style="min-width:100px">
       <div style="font-weight:700">${_fmtDeuda(d.amount, curr)}</div>
       ${_progressBlock(d)}
@@ -145,6 +147,37 @@ function _buildDeudaRow(d) {
       <button class="btn-icon" onclick="event.stopPropagation();openDeudaModal(${d.id})" title="Editar">✏️</button>
       ${d.status !== 'pagado' ? `<button class="btn-icon" onclick="event.stopPropagation();openPagoModal(${d.id})" title="Registrar pago" style="color:var(--green)">💸</button>` : ''}
       <button class="btn-icon" onclick="event.stopPropagation();toggleDeudaStatus(${d.id})" title="${d.status === 'pagado' ? 'Reabrir' : 'Marcar pagado'}">${d.status === 'pagado' ? '↩️' : '✅'}</button>
+    </td>
+  </tr>`;
+}
+
+function _buildDeudaMobileCard(d) {
+  const curr      = d.currency ?? '$';
+  const isCobrar  = d.type === 'por_cobrar';
+  const typeLabel = isCobrar ? '💚 Me deben' : '🔴 Yo debo';
+  const typeColor = isCobrar ? 'var(--green)' : 'var(--red)';
+  const pct       = d.amount ? Math.min(100, Math.round((d.paid ?? 0) / d.amount * 100)) : 0;
+
+  return `<tr onclick="_dRowTap(event,${d.id})" style="cursor:pointer">
+    <td colspan="7">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+          <span style="font-weight:700;font-size:.92rem">${esc(d.persona)}</span>
+          <span style="font-size:.7rem;font-weight:700;color:${typeColor};white-space:nowrap">${typeLabel}</span>
+        </div>
+        ${d.description ? `<div style="font-size:.78rem;color:var(--text2);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description)}</div>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px">
+          <div style="font-size:.7rem;color:var(--text2)">${_fmtDeudaDate(d.date)}</div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:.95rem">${_fmtDeuda(d.amount, curr)}</div>
+            ${_statusBadge(d.status)}
+          </div>
+        </div>
+        ${d.amount && d.status !== 'pagado' ? `
+        <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:8px">
+          <div style="height:100%;width:${pct}%;background:${typeColor};border-radius:2px;transition:width .3s"></div>
+        </div>` : ''}
+      </div>
     </td>
   </tr>`;
 }

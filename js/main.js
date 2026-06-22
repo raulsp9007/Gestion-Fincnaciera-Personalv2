@@ -59,6 +59,14 @@ function closeAdminSheet() {
   document.getElementById('admin-sheet').classList.remove('open');
 }
 
+// ── Deudas filter toggle (mobile) ────────────────────────
+function toggleDeudasFilters() {
+  const panel = document.getElementById('deudas-filters');
+  const arrow = document.getElementById('deudas-filter-arrow');
+  const open  = panel.classList.toggle('open');
+  if (arrow) arrow.textContent = open ? '▲' : '▼';
+}
+
 // ── User menu ─────────────────────────────────────────────
 function openUserMenu() {
   if (window.innerWidth <= 767) {

@@ -149,7 +149,11 @@
 
       <!-- VISTA: Deudas -->
       <div id="view-deudas" class="view">
-        <div class="filters" style="align-items:center">
+        <button class="filter-toggle-btn" onclick="toggleDeudasFilters()">
+          🔍 Filtrar / buscar
+          <span id="deudas-filter-arrow" style="margin-left:auto">▼</span>
+        </button>
+        <div class="filters" id="deudas-filters" style="align-items:center">
           <input id="d-search" type="search" placeholder="🔍 Buscar persona o descripción…"
                  oninput="renderDeudas()" style="flex:1;min-width:160px">
           <select id="d-type" onchange="renderDeudas()">
@@ -170,8 +174,8 @@
         <input type="file" id="deudas-import-file" accept=".json" style="display:none"
                onchange="handleDeudasImportFile(this)">
         <div style="font-size:.72rem;color:var(--text2);margin-bottom:10px" id="deudas-count"></div>
-        <div style="overflow-x:auto">
-          <table class="history-table" style="width:100%">
+        <div class="deudas-table-wrap" style="overflow-x:auto">
+          <table class="history-table deudas-table" style="width:100%">
             <thead>
               <tr>
                 <th>Fecha</th><th>Persona</th><th>Descripción</th>
@@ -183,8 +187,8 @@
         </div>
         <div id="deudas-pagadas-section" style="display:none">
           <div class="deudas-section-title">Deudas saldadas — <span id="deudas-pagadas-count"></span></div>
-          <div style="overflow-x:auto">
-            <table class="history-table" style="width:100%;opacity:.65">
+          <div class="deudas-table-wrap" style="overflow-x:auto">
+            <table class="history-table deudas-table" style="width:100%;opacity:.65">
               <thead>
                 <tr>
                   <th>Fecha</th><th>Persona</th><th>Descripción</th>

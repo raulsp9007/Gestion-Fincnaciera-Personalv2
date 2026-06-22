@@ -312,6 +312,12 @@ body.is-admin #tx-cat-cfg-btn{display:inline-flex}
   .filters{display:none;flex-direction:column;gap:8px;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px}
   .filters.open{display:flex}
 
+  /* ── DEUDAS MOBILE CARDS ────────────────────────────────── */
+  .deudas-table-wrap{overflow-x:visible!important}
+  .deudas-table thead{display:none}
+  .deudas-table tbody tr{display:block}
+  .deudas-table tbody td{display:block;padding:0!important;border:none!important;background:transparent!important}
+
   /* ── BOTTOM NAV ──────────────────────────────────────────── */
   #bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:calc(58px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(30,41,59,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.07);z-index:500;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none}
   #bottom-nav::-webkit-scrollbar{display:none}
