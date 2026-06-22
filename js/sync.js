@@ -19,8 +19,10 @@ function _setupVisibilityListener() {
       _syncInterval = null;
     } else if (getGasUrl()) {
       _startPoll();
+      _pullSharedConfig().catch(() => {});
       if (_hasSharedMenus()) syncAllSharedMenus();
       syncPrivateData().catch(() => {});
+      syncSharedDeudas().catch(() => {});
     }
   });
 }
@@ -29,6 +31,7 @@ function _startPoll() {
   clearInterval(_syncInterval);
   const ms = document.hidden ? POLL_INTERVAL_BACKGROUND : POLL_INTERVAL_VISIBLE;
   _syncInterval = setInterval(() => {
+    _pullSharedConfig().catch(() => {});
     if (_hasSharedMenus()) syncAllSharedMenus();
     syncPrivateData().catch(() => {});
     syncSharedDeudas().catch(() => {});
