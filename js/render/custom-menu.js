@@ -482,7 +482,7 @@ function _menuTxRow(menu, tx, cats, curr, visibleCols) {
 
   const cellFor = key => {
     switch (key) {
-      case 'fecha': return `<td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}</td>`;
+      case 'fecha': return `<td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${tx.time}</span>` : ''}</td>`;
       case 'monto': return `<td class="amount ${tx.type}" style="white-space:nowrap">${sign}${_fmtCurr(tx.amount, curr)}${_recBadge(tx)}</td>`;
       case 'desc':  return `<td style="font-weight:500">${esc(tx.description)} ${attachBadge(tx.attachments)}</td>`;
       case 'tipo':  return `<td><span class="badge ${tx.type}">${typeLabel}</span></td>`;
@@ -563,6 +563,7 @@ function openEditMenuTxModal(menuId, txId) {
   document.getElementById('tx-id').value                = txId;
   document.getElementById('tx-modal-title').textContent = 'Editar movimiento';
   document.getElementById('tx-date').value              = tx.date;
+  document.getElementById('tx-time').value              = tx.time ?? '';
   document.getElementById('tx-amount').value            = tx.amount;
   document.getElementById('tx-desc').value              = tx.description;
   document.getElementById('tx-notes').value             = tx.notes ?? '';

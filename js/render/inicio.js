@@ -257,7 +257,7 @@ function _buildTxRow(tx, cats) {
   const sign      = tx.type === 'inc' ? '+' : '-';
 
   return `<tr>
-    <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}</td>
+    <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${tx.time}</span>` : ''}</td>
     <td class="amount ${tx.type}" style="white-space:nowrap">
       ${sign}${fmtMoney(tx.amount)}${_recBadge(tx)}
     </td>
@@ -317,6 +317,7 @@ function openNewRecordModal() {
   document.getElementById('tx-id').value              = '';
   document.getElementById('tx-modal-title').textContent = 'Nuevo movimiento';
   document.getElementById('tx-date').value            = new Date().toISOString().slice(0, 10);
+  document.getElementById('tx-time').value            = new Date().toTimeString().slice(0, 5);
   document.getElementById('tx-amount').value          = '';
   document.getElementById('tx-desc').value            = '';
   document.getElementById('tx-notes').value           = '';
@@ -337,6 +338,7 @@ function openEditTxModal(txId) {
   document.getElementById('tx-id').value              = txId;
   document.getElementById('tx-modal-title').textContent = 'Editar movimiento';
   document.getElementById('tx-date').value            = tx.date;
+  document.getElementById('tx-time').value            = tx.time ?? '';
   document.getElementById('tx-amount').value          = tx.amount;
   document.getElementById('tx-desc').value            = tx.description;
   document.getElementById('tx-notes').value           = tx.notes ?? '';
@@ -392,7 +394,8 @@ async function saveTx() {
 
   const recurring     = document.getElementById('tx-recurring').value || false;
   const recurringNext = recurring ? nextOccurrence(date, recurring) : undefined;
-  const fields = { date, amount, description: desc, type, category: cat, notes,
+  const time   = document.getElementById('tx-time').value || '';
+  const fields = { date, time, amount, description: desc, type, category: cat, notes,
                    recurring, recurringNext, attachments };
 
   if (_txContext.src === 'custom') {

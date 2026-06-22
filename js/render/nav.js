@@ -24,6 +24,7 @@ function _buildSidebar() {
          onclick="switchView('menu-${m.id}')">
         <span class="ico">${esc(m.icon ?? '📋')}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+        ${m.shared ? `<span title="Compartido" style="font-size:.6rem;padding:1px 6px;border-radius:99px;background:#22c55e22;color:#22c55e;font-weight:700;flex-shrink:0;line-height:1.6">Sync</span>` : ''}
         ${isAdmin ? `<span onclick="event.stopPropagation();confirmDeleteMenu(${m.id})"
                           title="Eliminar menú"
                           style="flex-shrink:0;padding:1px 5px;border-radius:5px;opacity:0;font-size:.75rem;color:var(--red);line-height:1;transition:.15s"

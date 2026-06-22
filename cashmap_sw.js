@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'cashmap-v2-18';
+const CACHE_NAME = 'cashmap-v2-19';
 
 const PRECACHE = [
   './',
