@@ -20,6 +20,7 @@ function _setupVisibilityListener() {
     } else if (getGasUrl()) {
       _startPoll();
       if (_hasSharedMenus()) syncAllSharedMenus();
+      syncPrivateData().catch(() => {});
     }
   });
 }
@@ -29,6 +30,7 @@ function _startPoll() {
   const ms = document.hidden ? POLL_INTERVAL_BACKGROUND : POLL_INTERVAL_VISIBLE;
   _syncInterval = setInterval(() => {
     if (_hasSharedMenus()) syncAllSharedMenus();
+    syncPrivateData().catch(() => {});
   }, ms);
 }
 
@@ -43,6 +45,7 @@ async function connectAndSync() {
     setSyncBadge('saving');
     await _pullSharedConfig();
     await syncAllSharedMenus();
+    await syncPrivateData();
     setSyncBadge('ok');
   } catch (e) {
     setSyncBadge('error');
@@ -172,6 +175,106 @@ async function forceSyncNow() {
   } catch (e) {
     showToast('Error: ' + e.message, 'var(--red)');
   }
+}
+
+// ── Private data sync (inicio + deudas por usuario) ──────
+let _privateSyncing = false;
+
+async function syncPrivateData() {
+  const gasId = (typeof getGasIdentity === 'function') ? getGasIdentity() : null;
+  if (!gasId?.username || !getGasUrl() || _privateSyncing) return;
+  _privateSyncing = true;
+  try {
+    const u = gasId.username;
+    await _syncPrivateSheet(`_inicio_${u}`, 'inicio');
+    await _syncPrivateSheet(`_deudas_${u}`, 'deudas');
+  } finally {
+    _privateSyncing = false;
+  }
+}
+
+async function _syncPrivateSheet(sheetName, dataKey) {
+  const d     = loadData();
+  const local = d[dataKey] ?? [];
+
+  // 1. Enviar tombstones pendientes
+  const tombstones = _getPrivateTombstones()[dataKey] ?? [];
+  for (const id of [...tombstones]) {
+    try {
+      await callGas('deleteJsonRow', { sheetName, id: String(id) });
+      _clearPrivateTombstone(dataKey, id);
+    } catch { /* non-fatal */ }
+  }
+
+  // 2. Subir registros locales
+  if (local.length) {
+    const rows = local.map(r => ({
+      id:        String(r.id),
+      json:      JSON.stringify(r),
+      updatedAt: r.updatedAt ?? new Date().toISOString(),
+      deleted:   0
+    }));
+    await callGas('pushJsonRows', { sheetName, rows });
+  }
+
+  // 3. Bajar registros remotos
+  const r = await callGas('pullJsonRows', { sheetName });
+  if (!r.rows?.length) return;
+
+  // 4. Merge LWW — remote gana si updatedAt es mayor
+  const changed = _mergePrivateRows(d, dataKey, local, r.rows);
+  if (changed) {
+    saveData();
+    if (dataKey === 'inicio' && typeof renderInicio === 'function') renderInicio();
+    if (dataKey === 'deudas' && typeof renderDeudas === 'function') renderDeudas();
+  }
+}
+
+function _mergePrivateRows(data, dataKey, local, remoteRows) {
+  const map = new Map(local.map(r => [String(r.id), r]));
+  let changed = false;
+
+  for (const row of remoteRows) {
+    const remId = String(row.id);
+    if (row.deleted) {
+      if (map.has(remId)) { map.delete(remId); changed = true; }
+      continue;
+    }
+    if (!row.parsed) continue;
+
+    const existing = map.get(remId);
+    if (!existing) {
+      map.set(remId, row.parsed);
+      changed = true;
+    } else {
+      const remTs = row.updatedAt ?? '';
+      const locTs = existing.updatedAt ?? '';
+      if (remTs > locTs) { map.set(remId, row.parsed); changed = true; }
+    }
+  }
+
+  if (changed) data[dataKey] = [...map.values()];
+  return changed;
+}
+
+// ── Tombstones locales (registros eliminados pendientes de subir) ─
+const _TOMB_KEY = 'cashmap_v2_tombstones';
+
+function _getPrivateTombstones() {
+  try { return JSON.parse(localStorage.getItem(_TOMB_KEY) || '{}'); } catch { return {}; }
+}
+
+function markDeletedForSync(dataKey, id) {
+  const t = _getPrivateTombstones();
+  if (!t[dataKey]) t[dataKey] = [];
+  if (!t[dataKey].includes(id)) t[dataKey].push(id);
+  localStorage.setItem(_TOMB_KEY, JSON.stringify(t));
+}
+
+function _clearPrivateTombstone(dataKey, id) {
+  const t = _getPrivateTombstones();
+  if (t[dataKey]) t[dataKey] = t[dataKey].filter(x => x !== id);
+  localStorage.setItem(_TOMB_KEY, JSON.stringify(t));
 }
 
 // ── Sync badge ────────────────────────────────────────────

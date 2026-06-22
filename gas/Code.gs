@@ -37,9 +37,12 @@ function doPost(e) {
       case 'setConfig': result = _setConfig(payload);          break;
       case 'getUsers':  result = _getUsers();                  break;
       case 'setUsers':  result = _setUsers(payload);           break;
-      case 'pullRows':  result = _pullRows(payload);           break;
-      case 'pushRows':  result = _pushRows(payload);           break;
-      case 'deleteRow': result = _deleteRow(payload);          break;
+      case 'pullRows':     result = _pullRows(payload);        break;
+      case 'pushRows':     result = _pushRows(payload);        break;
+      case 'deleteRow':    result = _deleteRow(payload);       break;
+      case 'pullJsonRows': result = _pullJsonRows(payload);    break;
+      case 'pushJsonRows': result = _pushJsonRows(payload);    break;
+      case 'deleteJsonRow':result = _deleteJsonRow(payload);   break;
       default:          throw new Error('Acción desconocida: ' + action);
     }
 
@@ -226,6 +229,97 @@ function _deleteRow({ sheetName, id, updatedBy }) {
   }
 
   return { ok: true }; // fila no encontrada → no-op
+}
+
+// ── Sheets JSON privados (_inicio_User, _deudas_User) ────
+// Estructura: id | json | updatedAt | deleted
+const JSON_ROW_HEADERS = ['id', 'json', 'updatedAt', 'deleted'];
+
+function _ensureJsonSheet(ss, sheetName) {
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.appendRow(JSON_ROW_HEADERS);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, JSON_ROW_HEADERS.length)
+         .setBackground('#1e293b').setFontColor('#94a3b8').setFontWeight('bold');
+  }
+  return sheet;
+}
+
+function _pullJsonRows({ sheetName, since }) {
+  if (!sheetName) throw new Error('sheetName requerido');
+  const ss    = _getSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { ok: true, rows: [], pulledAt: new Date().toISOString() };
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return { ok: true, rows: [], pulledAt: new Date().toISOString() };
+
+  const sinceTs = since ? new Date(since).getTime() : 0;
+  const rows    = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const [id, json, updatedAt, deleted] = data[i].map(v => String(v ?? ''));
+    const rowTs = updatedAt ? new Date(updatedAt).getTime() : 0;
+    if (since && rowTs <= sinceTs) continue;
+    let parsed = null;
+    try { parsed = JSON.parse(json); } catch {}
+    rows.push({ id, parsed, updatedAt, deleted: deleted === '1' || deleted === 'true' });
+  }
+
+  return { ok: true, rows, pulledAt: new Date().toISOString() };
+}
+
+function _pushJsonRows({ sheetName, rows }) {
+  if (!sheetName)           throw new Error('sheetName requerido');
+  if (!Array.isArray(rows)) throw new Error('rows debe ser array');
+  if (!rows.length)         return { ok: true, upserted: 0 };
+
+  const ss    = _getSpreadsheet();
+  const sheet = _ensureJsonSheet(ss, sheetName);
+  const data  = sheet.getDataRange().getValues();
+
+  const idMap = {};
+  for (let i = 1; i < data.length; i++) {
+    idMap[String(data[i][0])] = i + 1;
+  }
+
+  let upserted = 0;
+  for (const row of rows) {
+    const key    = String(row.id);
+    const rowArr = [key, row.json ?? '', row.updatedAt ?? '', row.deleted ? 1 : 0];
+    if (idMap[key]) {
+      sheet.getRange(idMap[key], 1, 1, 4).setValues([rowArr]);
+    } else {
+      sheet.appendRow(rowArr);
+      idMap[key] = sheet.getLastRow();
+    }
+    upserted++;
+  }
+  return { ok: true, upserted };
+}
+
+function _deleteJsonRow({ sheetName, id }) {
+  if (!sheetName || !id) throw new Error('sheetName e id requeridos');
+  const ss    = _getSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  const now   = new Date().toISOString();
+
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(id)) {
+        sheet.getRange(i + 1, 3).setValue(now);
+        sheet.getRange(i + 1, 4).setValue(1);
+        return { ok: true };
+      }
+    }
+  }
+  // Si no existe la fila, insertar tombstone para propagar la eliminación
+  const s = sheet ?? _ensureJsonSheet(_getSpreadsheet(), sheetName);
+  s.appendRow([String(id), '', now, 1]);
+  return { ok: true };
 }
 
 // ── Respuesta JSON ────────────────────────────────────────

@@ -410,6 +410,7 @@ async function saveTx() {
     else    addTx(fields);
     document.getElementById('tx-modal').classList.remove('open');
     renderInicio();
+    syncPrivateData().catch(() => {});
   }
   showToast(id ? 'Movimiento actualizado' : 'Movimiento guardado');
 }
@@ -462,8 +463,10 @@ function confirmDeleteTx(txId) {
   const tx = getTxs().find(t => t.id === txId);
   if (!tx) return;
   showConfirm(`¿Eliminar "${esc(tx.description)}"?`, () => {
+    markDeletedForSync('inicio', txId);
     deleteTx(txId);
     renderInicio();
+    syncPrivateData().catch(() => {});
     showToast('Movimiento eliminado', 'var(--red)');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }

@@ -35,7 +35,7 @@ function addTx(fields) {
   const d   = loadData();
   const txs = d.inicio;
   const id  = txs.length ? Math.max(...txs.map(t => t.id)) + 1 : 1;
-  const tx  = { id, ...fields };
+  const tx  = { id, ...fields, updatedAt: new Date().toISOString() };
   txs.push(tx);
   saveData();
   return tx;
@@ -45,7 +45,7 @@ function updateTx(id, fields) {
   const d   = loadData();
   const idx = d.inicio.findIndex(t => t.id === id);
   if (idx < 0) return;
-  d.inicio[idx] = { ...d.inicio[idx], ...fields };
+  d.inicio[idx] = { ...d.inicio[idx], ...fields, updatedAt: new Date().toISOString() };
   saveData();
 }
 

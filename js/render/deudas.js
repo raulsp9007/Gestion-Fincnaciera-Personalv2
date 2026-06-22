@@ -226,6 +226,7 @@ function saveDeuda() {
   saveData();
   closeDeudaModal();
   renderDeudas();
+  syncPrivateData().catch(() => {});
   showToast(id ? 'Deuda actualizada' : 'Deuda creada');
 }
 
@@ -233,11 +234,13 @@ function confirmDeleteDeuda() {
   if (!_editingDeudaId) return;
   const id = _editingDeudaId;
   showConfirm('¿Eliminar esta deuda y todos sus pagos?', () => {
+    markDeletedForSync('deudas', id);
     const d = loadData();
     d.deudas = (d.deudas ?? []).filter(x => x.id !== id);
     saveData();
     closeDeudaModal();
     renderDeudas();
+    syncPrivateData().catch(() => {});
     showToast('Deuda eliminada', 'var(--red)');
   }, { icon: '💳', okLabel: 'Eliminar' });
 }
