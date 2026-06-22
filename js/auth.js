@@ -14,6 +14,10 @@ function loadUsers() {
 
 function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  // Sincronizar al servidor si hay URL configurada (gas.js cargado después)
+  if (typeof pushUsersToGas === 'function' && typeof getGasUrl === 'function' && getGasUrl()) {
+    pushUsersToGas();
+  }
 }
 
 function _nextUserId() {

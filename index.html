@@ -37,6 +37,22 @@
     </div>
     <div class="login-error" id="setup-error"></div>
     <button class="btn btn-primary" onclick="submitSetup()">Crear cuenta</button>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);text-align:center">
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:10px">¿Alguien ya configuró el servidor?</p>
+      <button class="btn btn-ghost" onclick="showJoinPanel()" style="width:100%;font-size:.82rem">
+        🔗 Unirse con URL del servidor
+      </button>
+    </div>
+
+    <div id="join-panel" style="display:none;margin-top:14px">
+      <div class="form-row">
+        <label>URL del servidor (GAS)</label>
+        <input id="join-url" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+      </div>
+      <div class="login-error" id="join-error"></div>
+      <button class="btn btn-primary" onclick="submitJoin()" style="width:100%">Descargar usuarios y entrar</button>
+    </div>
   </div>
 </div>
 

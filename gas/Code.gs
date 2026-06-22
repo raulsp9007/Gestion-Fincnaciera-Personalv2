@@ -35,6 +35,8 @@ function doPost(e) {
       case 'ping':      result = { ok: true, pong: true };    break;
       case 'getConfig': result = _getConfig(payload);          break;
       case 'setConfig': result = _setConfig(payload);          break;
+      case 'getUsers':  result = _getUsers();                  break;
+      case 'setUsers':  result = _setUsers(payload);           break;
       case 'pullRows':  result = _pullRows(payload);           break;
       case 'pushRows':  result = _pushRows(payload);           break;
       case 'deleteRow': result = _deleteRow(payload);          break;
@@ -49,11 +51,27 @@ function doPost(e) {
 
 // ── Spreadsheet helper ────────────────────────────────────
 function _getSpreadsheet() {
-  const active = _getSpreadsheet();
+  const active = SpreadsheetApp.getActiveSpreadsheet();
   if (active) return active;
   const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   if (!id) throw new Error('Configura SPREADSHEET_ID en Propiedades del script o usa Extensiones → Apps Script desde el Sheet');
   return SpreadsheetApp.openById(id);
+}
+
+// ── Usuarios sincronizados ───────────────────────────────
+// Se guardan como JSON en _config key "users".
+// Contiene el array completo de usuarios (con pinHash, nunca el PIN en texto).
+function _getUsers() {
+  const cfg  = _getConfig();
+  const raw  = cfg.config?.users;
+  if (!raw) return { ok: true, users: [] };
+  try { return { ok: true, users: JSON.parse(raw) }; }
+  catch { return { ok: true, users: [] }; }
+}
+
+function _setUsers({ users }) {
+  if (!Array.isArray(users)) throw new Error('users debe ser array');
+  return _setConfig({ key: 'users', value: JSON.stringify(users) });
 }
 
 // ── Sheet _config (clave/valor global) ───────────────────

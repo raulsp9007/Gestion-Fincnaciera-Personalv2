@@ -128,6 +128,34 @@ async function submitSetup() {
   startApp();
 }
 
+// ── Unirse con URL del servidor ───────────────────────────
+function showJoinPanel() {
+  const p = document.getElementById('join-panel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+async function submitJoin() {
+  const url   = document.getElementById('join-url').value.trim();
+  const errEl = document.getElementById('join-error');
+  errEl.textContent = '';
+
+  if (!url) { errEl.textContent = 'La URL es obligatoria.'; return; }
+
+  errEl.style.color = 'var(--text2)';
+  errEl.textContent = 'Conectando al servidor…';
+
+  try {
+    const users = await pullUsersFromGas(url);
+    setGasUrl(url);
+    saveUsers(users);
+    errEl.textContent = '';
+    showLoginScreen();
+  } catch (e) {
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = 'Error: ' + e.message;
+  }
+}
+
 // ── Login ─────────────────────────────────────────────────
 async function submitLogin() {
   const userId = parseInt(document.getElementById('login-user-sel').value, 10);
