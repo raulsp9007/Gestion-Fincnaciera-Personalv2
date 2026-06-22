@@ -64,6 +64,17 @@ function _progressBlock(d) {
     <div style="font-size:.7rem;color:var(--text2)">Restante: ${_fmtDeuda(remaining, d.currency ?? '$')}</div>`;
 }
 
+function _fmtDeudaDate(dateStr) {
+  if (!dateStr) return '';
+  const tIdx = dateStr.indexOf('T');
+  if (tIdx >= 0) {
+    const [y, m, d] = dateStr.slice(0, tIdx).split('-');
+    const time = dateStr.slice(tIdx + 1, tIdx + 6);
+    return `${d}/${m}/${y}<br><span style="font-size:.65rem;opacity:.7">${time}</span>`;
+  }
+  return fmtDate(dateStr);
+}
+
 // ── Main render ───────────────────────────────────────────
 function renderDeudas(sourceId) {
   if (sourceId !== undefined) _deudaSource = sourceId;
@@ -120,7 +131,7 @@ function _buildDeudaRow(d) {
   const hasPayments = (d.payments ?? []).length > 0;
 
   return `<tr onclick="_dRowTap(event,${d.id})" style="cursor:pointer">
-    <td style="white-space:nowrap;color:var(--text2);font-size:.8rem">${fmtDate(d.date)}</td>
+    <td style="white-space:nowrap;color:var(--text2);font-size:.8rem">${_fmtDeudaDate(d.date)}</td>
     <td style="font-weight:600">${esc(d.persona)}</td>
     <td style="font-size:.78rem;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description ?? '')}</td>
     <td><span style="font-size:.72rem;font-weight:700;color:${typeColor}">${typeLabel}</span></td>
@@ -184,7 +195,7 @@ function openDeudaModal(id) {
     if (!d) return;
     document.getElementById('deuda-modal-title').textContent = 'Editar deuda';
     document.getElementById('deuda-id').value          = d.id;
-    document.getElementById('deuda-date').value        = (d.date ?? '').slice(0, 10);
+    document.getElementById('deuda-date').value        = (d.date ?? '').slice(0, 16);
     document.getElementById('deuda-amount').value      = d.amount;
     document.getElementById('deuda-persona').value     = d.persona ?? '';
     document.getElementById('deuda-desc').value        = d.description ?? '';
@@ -196,7 +207,7 @@ function openDeudaModal(id) {
   } else {
     document.getElementById('deuda-modal-title').textContent = 'Nueva deuda';
     document.getElementById('deuda-id').value          = '';
-    document.getElementById('deuda-date').value        = new Date().toISOString().slice(0, 10);
+    const _now = new Date(); document.getElementById('deuda-date').value = new Date(_now - _now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     document.getElementById('deuda-amount').value      = '';
     document.getElementById('deuda-persona').value     = '';
     document.getElementById('deuda-desc').value        = '';
