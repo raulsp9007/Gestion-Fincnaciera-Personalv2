@@ -22,13 +22,17 @@ function _statusBadge(status) {
   return `<span style="font-size:.72rem;font-weight:700;color:${s.color}">${s.label}</span>`;
 }
 
-function _progressBar(d) {
-  if (!d.amount) return '';
-  const pct   = Math.min(100, Math.round((d.paid ?? 0) / d.amount * 100));
-  const color = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
-  return `<div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden">
-    <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .3s"></div>
-  </div>`;
+function _progressBlock(d) {
+  if (!d.amount || d.status === 'pagado') return '';
+  const pct       = Math.min(100, Math.round((d.paid ?? 0) / d.amount * 100));
+  const remaining = deudaRemaining(d);
+  const color     = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
+  return `
+    <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .3s"></div>
+    </div>
+    <div style="font-size:.7rem;color:${color};font-weight:700;margin-top:3px">${pct}%</div>
+    <div style="font-size:.7rem;color:var(--text2)">Restante: ${_fmtDeuda(remaining, d.currency ?? '$')}</div>`;
 }
 
 // ── Main render ───────────────────────────────────────────
@@ -83,7 +87,7 @@ function _buildDeudaRow(d) {
     <td><span style="font-size:.72rem;font-weight:700;color:${typeColor}">${typeLabel}</span></td>
     <td style="min-width:100px">
       <div style="font-weight:700">${_fmtDeuda(d.amount, curr)}</div>
-      ${_progressBar(d)}
+      ${_progressBlock(d)}
     </td>
     <td>${_statusBadge(d.status)}</td>
     <td style="white-space:nowrap;text-align:right">
