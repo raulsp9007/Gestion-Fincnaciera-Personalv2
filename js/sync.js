@@ -84,6 +84,19 @@ async function _pullSharedConfig() {
     }
   }
 
+  // Eliminar menús compartidos que ya no están en el servidor (descompartidos)
+  const remoteSheets = new Set(sharedMenus.map(sm => sm.sheetName));
+  const toRemove     = d.customMenus.filter(m => m.shared && m.sheetName && !remoteSheets.has(m.sheetName));
+  if (toRemove.length) {
+    const removeIds = new Set(toRemove.map(m => m.id));
+    d.customMenus   = d.customMenus.filter(m => !removeIds.has(m.id));
+    d.navOrder      = d.navOrder.filter(k => {
+      const num = parseInt(k.replace('menu-', ''), 10);
+      return isNaN(num) || !removeIds.has(num);
+    });
+    changed = true;
+  }
+
   if (changed) { saveData(); buildNav(); }
 }
 
