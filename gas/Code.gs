@@ -7,7 +7,14 @@
 //    - Quién tiene acceso: Cualquier usuario
 // 4. Copia la URL y pégala en CashMap → Admin → URL del servidor
 
-// ── Punto de entrada ──────────────────────────────────────
+// ── Punto de entrada GET (ping / diagnóstico) ─────────────
+function doGet(e) {
+  const action = (e?.parameter?.action ?? 'ping');
+  if (action === 'ping') return _json({ ok: true, pong: true, method: 'GET' });
+  return _json({ ok: false, error: 'Solo ping está disponible por GET' });
+}
+
+// ── Punto de entrada POST ─────────────────────────────────
 function doPost(e) {
   try {
     const body    = JSON.parse(e.postData.contents);

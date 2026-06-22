@@ -30,7 +30,13 @@ async function callGas(action, payload = {}) {
   return data;
 }
 
-// ── Test connection ───────────────────────────────────────
+// ── Test connection (GET para evitar CORS redirect con POST) ─
 async function testGasConnection() {
-  return callGas('ping');
+  const url = getGasUrl();
+  if (!url) throw new Error('URL de GAS no configurada');
+  const resp = await fetch(url + '?action=ping', { method: 'GET', redirect: 'follow' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const data = await resp.json();
+  if (!data.ok) throw new Error(data.error ?? 'Error desconocido');
+  return data;
 }
