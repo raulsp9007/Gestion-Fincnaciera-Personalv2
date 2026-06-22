@@ -3,6 +3,7 @@
 // ── Chart instances ───────────────────────────────────────
 let _chart1 = null;
 let _chart2 = null;
+let _overviewCharts = {};
 
 // ── Active month ──────────────────────────────────────────
 let _inicioMonth = null;
@@ -30,49 +31,135 @@ function _ym() {
   return new Date().toISOString().slice(0, 7);
 }
 
-// ── Main render ───────────────────────────────────────────
+// ── Main render — Vista General ───────────────────────────
 function renderInicio() {
   if (!_inicioMonth) _inicioMonth = _ym();
 
-  const el   = document.getElementById('view-inicio');
-  const cats = loadData().globalCats;
-  const txs  = getTxsForMonth(_inicioMonth);
+  Object.values(_overviewCharts).forEach(c => c?.destroy());
+  _overviewCharts = {};
+  if (_chart1) { _chart1.destroy(); _chart1 = null; }
+  if (_chart2) { _chart2.destroy(); _chart2 = null; }
 
-  const inc = txs.filter(t => t.type === 'inc').reduce((s, t) => s + t.amount, 0);
-  const exp = txs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
-  const bal = inc - exp;
+  const el    = document.getElementById('view-inicio');
+  const d     = loadData();
+  const menus = d.customMenus ?? [];
+  const cats  = d.globalCats;
+
+  const now    = new Date();
+  const updStr = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) + ' ' +
+                 now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
   el.innerHTML = `
+    <div class="overview-topbar">
+      <span class="section-label">📊 VISTA GENERAL</span>
+      <span class="overview-updated">Actualizado: ${updStr}</span>
+    </div>
     ${_buildMonthTabs()}
-    <div class="cards">
-      <div class="card green">
-        <div class="label">Ingresos</div>
-        <div class="value">${fmtMoney(inc)}</div>
-      </div>
-      <div class="card red">
-        <div class="label">Gastos</div>
-        <div class="value">${fmtMoney(exp)}</div>
-      </div>
-      <div class="card ${bal >= 0 ? 'blue' : 'red'}">
-        <div class="label">Balance</div>
-        <div class="value">${fmtMoney(bal)}</div>
-      </div>
-    </div>
-    ${_buildBudgetBars(txs)}
-    <div class="charts">
-      <div class="chart-box">
-        <h3>Gastos por categoría</h3>
-        <canvas id="inicio-doughnut" height="160"></canvas>
-      </div>
-      <div class="chart-box">
-        <h3>Evolución mensual</h3>
-        <canvas id="inicio-bar" height="160"></canvas>
-      </div>
-    </div>
-    ${_buildTxTable(txs, cats)}
+    ${menus.length
+      ? `<div class="overview-grid">${menus.map(m => _buildOverviewCard(m, cats)).join('')}</div>`
+      : `<div class="empty" style="margin-top:40px">Sin menús activos.<br>Crea uno desde el menú lateral.</div>`
+    }
   `;
 
-  _drawCharts(txs, cats);
+  for (const menu of menus) {
+    _drawOverviewCharts(menu, cats);
+  }
+}
+
+function _fmtNum(n) {
+  return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
+}
+
+function _buildOverviewCard(menu, cats) {
+  const txs = (menu.data ?? []).filter(t => (t.date ?? '').startsWith(_inicioMonth));
+  const inc  = txs.filter(t => t.type === 'inc').reduce((s, t) => s + t.amount, 0);
+  const exp  = txs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
+  const bal  = inc - exp;
+  const curr = menu.currency ?? '';
+
+  return `
+    <div class="overview-card" onclick="switchView('menu-${menu.id}')" style="cursor:pointer">
+      <div class="ovc-header">
+        <span class="ovc-icon">${menu.icon ?? '📋'}</span>
+        <span class="ovc-name">${esc(menu.name)}</span>
+        <span class="ovc-curr-badge">${esc(curr)}</span>
+      </div>
+      <div class="ovc-stats">
+        <div class="ovc-stat">
+          <div class="ovc-stat-label">Ingresos</div>
+          <div class="ovc-stat-value" style="color:var(--green)">${curr}${_fmtNum(inc)}</div>
+        </div>
+        <div class="ovc-stat">
+          <div class="ovc-stat-label">Gastos</div>
+          <div class="ovc-stat-value" style="color:var(--red)">${curr}${_fmtNum(exp)}</div>
+        </div>
+        <div class="ovc-stat">
+          <div class="ovc-stat-label">Balance</div>
+          <div class="ovc-stat-value" style="color:${bal >= 0 ? 'var(--green)' : 'var(--red)'}">
+            ${bal >= 0 ? '+' : ''}${curr}${_fmtNum(Math.abs(bal))}
+          </div>
+        </div>
+      </div>
+      <div class="ovc-charts">
+        <div class="ovc-chart-col">
+          <div class="ovc-chart-label">♥ Ingresos por cat.</div>
+          <div style="height:130px;position:relative" id="ovc-inc-wrap-${menu.id}">
+            <canvas id="ovc-inc-${menu.id}"></canvas>
+          </div>
+        </div>
+        <div class="ovc-chart-col">
+          <div class="ovc-chart-label">● Gastos por cat.</div>
+          <div style="height:130px;position:relative" id="ovc-exp-wrap-${menu.id}">
+            <canvas id="ovc-exp-${menu.id}"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _drawOverviewCharts(menu, cats) {
+  if (typeof Chart === 'undefined') return;
+  const txs  = (menu.data ?? []).filter(t => (t.date ?? '').startsWith(_inicioMonth));
+  const curr = menu.currency ?? '';
+
+  const makeDonut = (canvasId, wrapId, type, catMap) => {
+    const totals = {};
+    for (const t of txs.filter(t => t.type === type)) {
+      totals[t.category] = (totals[t.category] ?? 0) + t.amount;
+    }
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    if (!sorted.length) {
+      const wrap = document.getElementById(wrapId);
+      if (wrap) wrap.innerHTML = `<div class="ovc-empty-chart">Sin ${type === 'inc' ? 'ingresos' : 'gastos'}</div>`;
+      return null;
+    }
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels:   sorted.map(([k]) => catMap[k]?.label ?? k),
+        datasets: [{
+          data:            sorted.map(([, v]) => v),
+          backgroundColor: sorted.map(([k]) => catMap[k]?.color ?? '#64748b'),
+          borderWidth: 0, hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 8, padding: 5 } },
+          tooltip: { callbacks: { label: c => ` ${curr}${_fmtNum(c.raw)}` } }
+        }
+      }
+    });
+  };
+
+  const ic = makeDonut(`ovc-inc-${menu.id}`, `ovc-inc-wrap-${menu.id}`, 'inc', cats.inc ?? {});
+  const ec = makeDonut(`ovc-exp-${menu.id}`, `ovc-exp-wrap-${menu.id}`, 'exp', cats.exp ?? {});
+  if (ic) _overviewCharts[`inc_${menu.id}`] = ic;
+  if (ec) _overviewCharts[`exp_${menu.id}`] = ec;
 }
 
 // ── Month tabs ────────────────────────────────────────────
@@ -188,74 +275,6 @@ function _buildTxRow(tx, cats) {
   </tr>`;
 }
 
-// ── Charts ────────────────────────────────────────────────
-function _drawCharts(txs, cats) {
-  if (_chart1) { _chart1.destroy(); _chart1 = null; }
-  if (_chart2) { _chart2.destroy(); _chart2 = null; }
-  if (typeof Chart === 'undefined') return;
-
-  // Doughnut — expenses by category
-  const expCats  = cats.exp ?? {};
-  const catTotals = {};
-  for (const t of txs.filter(t => t.type === 'exp')) {
-    catTotals[t.category] = (catTotals[t.category] ?? 0) + t.amount;
-  }
-  const dLabels = Object.keys(catTotals).map(k => expCats[k]?.label ?? k);
-  const dValues = Object.values(catTotals);
-  const dColors = Object.keys(catTotals).map(k => expCats[k]?.color ?? '#64748b');
-
-  const ctx1 = document.getElementById('inicio-doughnut');
-  if (ctx1) {
-    _chart1 = new Chart(ctx1, {
-      type: 'doughnut',
-      data: { labels: dLabels, datasets: [{ data: dValues, backgroundColor: dColors, borderWidth: 0, hoverOffset: 6 }] },
-      options: {
-        responsive: true, maintainAspectRatio: false, cutout: '65%',
-        plugins: {
-          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 10, padding: 10 } },
-          tooltip: { callbacks: { label: c => ` ${fmtMoney(c.raw)}` } }
-        }
-      }
-    });
-  }
-
-  // Bar — inc vs exp last 6 months
-  const allTxs = getTxs();
-  const [selY, selM] = _inicioMonth.split('-').map(Number);
-  const barMonths = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(selY, selM - 1 - (5 - i), 1);
-    return d.toISOString().slice(0, 7);
-  });
-  const barInc = barMonths.map(ym =>
-    allTxs.filter(t => t.type === 'inc' && t.date.startsWith(ym)).reduce((s, t) => s + t.amount, 0));
-  const barExp = barMonths.map(ym =>
-    allTxs.filter(t => t.type === 'exp' && t.date.startsWith(ym)).reduce((s, t) => s + t.amount, 0));
-
-  const ctx2 = document.getElementById('inicio-bar');
-  if (ctx2) {
-    _chart2 = new Chart(ctx2, {
-      type: 'bar',
-      data: {
-        labels: barMonths.map(ym => _monthLabel(ym)),
-        datasets: [
-          { label: 'Ingresos', data: barInc, backgroundColor: '#22c55e99', borderRadius: 4 },
-          { label: 'Gastos',   data: barExp, backgroundColor: '#ef444499', borderRadius: 4 }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 10, padding: 8 } },
-          tooltip: { callbacks: { label: c => ` ${fmtMoney(c.raw)}` } }
-        },
-        scales: {
-          x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => '€' + v }, grid: { color: '#1e293b' } }
-        }
-      }
-    });
-  }
-}
 
 // ── Tx modal — shared state ───────────────────────────────
 let _txContext = { src: 'inicio', menuId: null }; // shared with custom-menu.js

@@ -85,6 +85,26 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;flex-shrink:0;vertical-align:middle}
 .home-cat-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:600;background:rgba(167,139,250,.12);color:#a78bfa}
 
+/* ── VISTA GENERAL ───────────────────────────────────────── */
+.overview-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-label{font-size:.7rem;font-weight:700;letter-spacing:.08em;color:var(--text2);text-transform:uppercase}
+.overview-updated{font-size:.72rem;color:var(--text2)}
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.overview-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;transition:border-color .2s,box-shadow .2s}
+.overview-card:hover{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)22}
+.ovc-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ovc-icon{font-size:1.25rem;flex-shrink:0}
+.ovc-name{font-weight:700;font-size:.95rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ovc-curr-badge{font-size:.7rem;padding:2px 8px;border-radius:99px;background:var(--bg3);color:var(--text2);font-weight:600;flex-shrink:0}
+.ovc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.ovc-stat{background:var(--bg3);border-radius:8px;padding:7px 8px}
+.ovc-stat-label{font-size:.65rem;color:var(--text2);margin-bottom:2px}
+.ovc-stat-value{font-size:.78rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ovc-charts{display:flex;gap:10px}
+.ovc-chart-col{flex:1;min-width:0}
+.ovc-chart-label{font-size:.65rem;color:var(--text2);font-weight:600;margin-bottom:4px}
+.ovc-empty-chart{display:flex;align-items:center;justify-content:center;height:100%;font-size:.75rem;color:var(--text2);font-style:italic}
+
 /* ── ATTACHMENTS ─────────────────────────────────────────── */
 .attach-row{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg3);border-radius:8px;margin-bottom:4px}
 .attach-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem}
