@@ -102,6 +102,8 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .btn-icon:hover{background:var(--bg3);color:var(--text)}
 body.is-admin .col-cfg-btn{display:inline-flex}
 .col-cfg-btn{display:none}
+#tx-cat-cfg-btn{display:none}
+body.is-admin #tx-cat-cfg-btn{display:inline-flex}
 
 /* ── MODAL ───────────────────────────────────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center}

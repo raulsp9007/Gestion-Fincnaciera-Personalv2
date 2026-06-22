@@ -304,6 +304,7 @@ function saveCatForm() {
   saveData();
   closeCatForm();
   renderCatsList();
+  if (typeof _updateTxCatOptions === 'function') _updateTxCatOptions();
   showToast(key ? 'Categoría actualizada' : 'Categoría creada');
 }
 
@@ -316,8 +317,25 @@ function confirmDeleteCat(key) {
     delete d.globalCats[_catsType][key];
     saveData();
     renderCatsList();
+    if (typeof _updateTxCatOptions === 'function') _updateTxCatOptions();
     showToast('Categoría eliminada', 'var(--red)');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
+
+function restoreDefaultCats() {
+  showConfirm('¿Restaurar categorías predeterminadas? Solo añade las que falten, no borra las tuyas.', () => {
+    const d = loadData();
+    for (const side of ['inc', 'exp']) {
+      if (!d.globalCats[side]) d.globalCats[side] = {};
+      for (const [key, cat] of Object.entries(DEFAULT_CATS[side] ?? {})) {
+        if (!d.globalCats[side][key]) d.globalCats[side][key] = { ...cat };
+      }
+    }
+    saveData();
+    renderCatsList();
+    if (typeof _updateTxCatOptions === 'function') _updateTxCatOptions();
+    showToast('Categorías predeterminadas restauradas ✓');
+  }, { icon: '🏷️', okLabel: 'Restaurar' });
 }
 
 // ── Presupuestos ──────────────────────────────────────────
