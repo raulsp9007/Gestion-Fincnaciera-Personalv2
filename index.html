@@ -163,8 +163,11 @@
             <option value="parcial">🔶 Parcial</option>
             <option value="pagado">✅ Pagado</option>
           </select>
+          <button class="btn btn-ghost btn-sm" onclick="openDeudasImportPicker()">📥 Importar</button>
           <button class="btn btn-primary btn-sm" onclick="openDeudaModal()">+ Nueva deuda</button>
         </div>
+        <input type="file" id="deudas-import-file" accept=".json" style="display:none"
+               onchange="handleDeudasImportFile(this)">
         <div style="font-size:.72rem;color:var(--text2);margin-bottom:10px" id="deudas-count"></div>
         <div style="overflow-x:auto">
           <table class="history-table" style="width:100%">

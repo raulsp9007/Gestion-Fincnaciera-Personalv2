@@ -436,3 +436,62 @@ function deletePagoItem(deudaId, pIdx) {
     showToast('Pago eliminado', 'var(--red)');
   }, { icon: '💸', okLabel: 'Eliminar pago' });
 }
+
+// ── Import deudas desde JSON ──────────────────────────────
+function openDeudasImportPicker() {
+  const inp = document.getElementById('deudas-import-file');
+  inp.value = '';
+  inp.click();
+}
+
+function handleDeudasImportFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    let raw;
+    try { raw = JSON.parse(e.target.result); }
+    catch { showToast('JSON inválido', 'var(--red)'); return; }
+
+    const src = raw.deudas ?? [];
+    if (!src.length) { showToast('Sin deudas en el archivo', 'var(--yellow)'); return; }
+
+    showConfirm(
+      `¿Importar ${src.length} deuda(s) desde "${file.name}"?\nSe agregarán a las existentes sin eliminar nada.`,
+      () => {
+        const d = loadData();
+        if (!d.deudas) d.deudas = [];
+        let nextId = d.deudas.length ? Math.max(...d.deudas.map(x => x.id)) + 1 : 1;
+        let count  = 0;
+        for (const dv of src) {
+          d.deudas.push({
+            id:          nextId++,
+            date:        String(dv.date || '').slice(0, 10),
+            amount:      Number(dv.amount) || 0,
+            persona:     String(dv.persona || ''),
+            description: String(dv.description || ''),
+            type:        dv.type === 'por_pagar' ? 'por_pagar' : 'por_cobrar',
+            status:      dv.status ?? 'pendiente',
+            notes:       String(dv.notes || ''),
+            currency:    String(dv.currency || '$'),
+            paid:        Number(dv.paid) || 0,
+            payments:    (dv.payments ?? []).map(p => ({
+              datetime: p.datetime ?? p.date ?? '',
+              amount:   Number(p.amount) || 0,
+              notes:    String(p.notes || '')
+            })),
+            updatedAt: dv.updatedAt ?? new Date().toISOString()
+          });
+          count++;
+        }
+        saveData();
+        renderDeudas();
+        showToast(`Importadas ${count} deuda(s) ✓`);
+      },
+      { icon: '📥', okLabel: 'Importar' }
+    );
+  };
+  reader.readAsText(file);
+}
