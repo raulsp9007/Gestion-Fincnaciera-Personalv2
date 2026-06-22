@@ -1,44 +1,159 @@
 'use strict';
 
-// ── Sync state ────────────────────────────────────────────
 let _syncInterval = null;
-let _syncPaused   = false;
+let _isSyncing    = false;
 
 // ── Start (called from startApp) ──────────────────────────
 function startSync() {
   _setupVisibilityListener();
-  // Fase 6: arrancar poll periódico aquí
+  if (getGasUrl()) {
+    connectAndSync();
+    _startPoll();
+  }
 }
 
 function _setupVisibilityListener() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      _pauseSync();
-    } else {
-      _resumeSync();
+      clearInterval(_syncInterval);
+      _syncInterval = null;
+    } else if (getGasUrl()) {
+      _startPoll();
+      if (_hasSharedMenus()) syncAllSharedMenus();
     }
   });
 }
 
-function _pauseSync() {
-  _syncPaused = true;
+function _startPoll() {
   clearInterval(_syncInterval);
-  _syncInterval = null;
+  const ms = document.hidden ? POLL_INTERVAL_BACKGROUND : POLL_INTERVAL_VISIBLE;
+  _syncInterval = setInterval(() => {
+    if (_hasSharedMenus()) syncAllSharedMenus();
+  }, ms);
 }
 
-function _resumeSync() {
-  _syncPaused = false;
-  // Fase 6: reiniciar poll con POLL_INTERVAL_VISIBLE
+function _hasSharedMenus() {
+  return getCustomMenus().some(m => m.shared && m.sheetName);
 }
 
-// ── Manual sync (botón "Sincronizar ahora") ───────────────
-async function forceSyncNow() {
-  if (!getGasUrl()) {
-    showToast('Configura la URL de GAS primero', 'var(--yellow)');
-    return;
+// ── Connect + pull config ─────────────────────────────────
+async function connectAndSync() {
+  if (!getGasUrl() || !currentUser) return;
+  try {
+    setSyncBadge('saving');
+    await _pullSharedConfig();
+    await syncAllSharedMenus();
+    setSyncBadge('ok');
+  } catch (e) {
+    setSyncBadge('error');
   }
-  // Fase 6: push + pull de menús compartidos
-  showToast('Próximamente — Fase 6', 'var(--yellow)');
+}
+
+async function _pullSharedConfig() {
+  const r   = await callGas('getConfig');
+  const raw = r.config?.shared_menus;
+  if (!raw) return;
+
+  let sharedMenus;
+  try { sharedMenus = JSON.parse(raw); } catch { return; }
+
+  const userName = currentUser?.name;
+  const d = loadData();
+  let changed = false;
+
+  for (const sm of sharedMenus) {
+    const access = sm.sharedWith?.find(u => u.name === userName);
+    if (!access) continue; // no access for this user
+
+    const existing = d.customMenus.find(m => m.sheetName === sm.sheetName);
+    if (!existing) {
+      const id = d.customMenus.length
+        ? Math.max(...d.customMenus.map(m => m.id)) + 1 : 1;
+      d.customMenus.push({
+        id, name: sm.name, icon: sm.icon ?? '📋',
+        currency: sm.currency ?? '€', data: [], nextDataId: 1,
+        shared: true, sheetName: sm.sheetName,
+        myRole: access.role, sharedWith: sm.sharedWith ?? [],
+        lastPulledAt: null
+      });
+      d.navOrder.push('menu-' + id);
+      changed = true;
+    }
+  }
+
+  if (changed) { saveData(); buildNav(); }
+}
+
+// ── Pull all shared menus ─────────────────────────────────
+async function syncAllSharedMenus() {
+  if (_isSyncing) return;
+  _isSyncing = true;
+  try {
+    for (const menu of getCustomMenus().filter(m => m.shared && m.sheetName)) {
+      await _syncOneMenu(menu);
+    }
+  } finally {
+    _isSyncing = false;
+  }
+}
+
+async function _syncOneMenu(menu) {
+  try {
+    const r = await callGas('pullRows', { sheetName: menu.sheetName, since: menu.lastPulledAt });
+    if (!r.rows?.length) return;
+    mergeMenuRows(menu.id, r.rows);
+    setMenuLastPulled(menu.id, r.pulledAt);
+    if (typeof _currentView !== 'undefined' && _currentView === 'menu-' + menu.id) {
+      renderCustomMenu(menu.id);
+    }
+    setSyncBadge('ok');
+  } catch {
+    setSyncBadge('error');
+  }
+}
+
+// ── Push a menu's records to GAS ──────────────────────────
+async function pushMenuToGas(menuId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu?.shared || !menu.sheetName) return;
+  setSyncBadge('saving');
+  const rows = menu.data.map(tx => ({ ...tx, deleted: 0, updatedBy: currentUser?.name ?? '' }));
+  await callGas('pushRows', { sheetName: menu.sheetName, rows });
+  setSyncBadge('ok');
+}
+
+// ── Push single-record save ───────────────────────────────
+async function onMenuSaved(menuId) {
+  if (!getGasUrl()) return;
+  try { await pushMenuToGas(menuId); } catch { setSyncBadge('error'); }
+}
+
+// ── Push delete to GAS ────────────────────────────────────
+async function pushDeleteToGas(menuId, txId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu?.shared || !menu.sheetName || !getGasUrl()) return;
+  try {
+    await callGas('deleteRow', { sheetName: menu.sheetName, id: txId, updatedBy: currentUser?.name ?? '' });
+  } catch { /* non-fatal */ }
+}
+
+// ── Push shared config to _config sheet ──────────────────
+async function pushSharedConfig() {
+  const sharedMenus = getCustomMenus()
+    .filter(m => m.shared && m.sheetName)
+    .map(m => ({ sheetName: m.sheetName, name: m.name, icon: m.icon, currency: m.currency, sharedWith: m.sharedWith ?? [] }));
+  await callGas('setConfig', { key: 'shared_menus', value: JSON.stringify(sharedMenus) });
+}
+
+// ── Manual sync button ────────────────────────────────────
+async function forceSyncNow() {
+  if (!getGasUrl()) { showToast('Configura la URL de GAS primero', 'var(--yellow)'); return; }
+  try {
+    await connectAndSync();
+    showToast('Sincronizado');
+  } catch (e) {
+    showToast('Error: ' + e.message, 'var(--red)');
+  }
 }
 
 // ── Sync badge ────────────────────────────────────────────
@@ -46,15 +161,13 @@ function setSyncBadge(state) {
   const badge = document.getElementById('sync-badge');
   const lbl   = document.getElementById('sync-lbl');
   if (!badge || !lbl) return;
-
   const map = {
-    local:   { cls: 'local',   txt: 'Local' },
-    saving:  { cls: 'saving',  txt: 'Guardando…' },
-    ok:      { cls: 'ok',      txt: 'Sincronizado' },
-    error:   { cls: 'error',   txt: 'Error sync' },
-    offline: { cls: 'offline', txt: 'Sin conexión' },
+    local:  { cls: 'local',  txt: 'Local' },
+    saving: { cls: 'saving', txt: 'Guardando…' },
+    ok:     { cls: 'ok',     txt: 'Sincronizado' },
+    error:  { cls: 'error',  txt: 'Error sync' },
   };
   const s = map[state] ?? map.local;
-  badge.className = 'sync-badge ' + s.cls;
+  badge.className = s.cls;
   lbl.textContent = s.txt;
 }

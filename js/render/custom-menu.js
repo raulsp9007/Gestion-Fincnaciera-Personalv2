@@ -21,15 +21,18 @@ function renderCustomMenu(menuId) {
   const el = document.getElementById('view-custom');
   el.innerHTML = `
     <div class="menu-header">
-      <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:1.6rem">${esc(menu.icon ?? '📋')}</span>
         <h2 style="font-size:1.1rem;font-weight:700">${esc(menu.name)}</h2>
+        ${menu.shared ? `<span style="font-size:.68rem;padding:2px 7px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:600">Compartido</span>` : ''}
       </div>
-      ${currentUser?.role === 'admin' ? `
+      ${_canEditMenu(menu) ? `
         <div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="openEditMenuModal(${menuId})">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--red)"
-                  onclick="confirmDeleteMenu(${menuId})">🗑️</button>
+          ${!menu.shared ? `
+            <button class="btn btn-ghost btn-sm" onclick="openEditMenuModal(${menuId})">✏️ Editar</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="confirmDeleteMenu(${menuId})">🗑️</button>
+          ` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="openShareModal(${menuId})">🔗 ${menu.shared ? 'Acceso' : 'Compartir'}</button>
         </div>` : ''}
     </div>
     ${_menuMonthTabs(menuId, ym)}
@@ -47,7 +50,7 @@ function renderCustomMenu(menuId) {
         <div class="value">${_fmtCurr(bal, curr)}</div>
       </div>
     </div>
-    ${_menuTxTable(menuId, txs, cats, curr)}
+    ${_menuTxTable(menu, txs, cats, curr)}
   `;
 }
 
@@ -78,15 +81,16 @@ function selectMenuMonth(menuId, ym) {
 }
 
 // ── Transaction table ─────────────────────────────────────
-function _menuTxTable(menuId, txs, cats, curr) {
+function _menuTxTable(menu, txs, cats, curr) {
+  const menuId = menu.id;
   const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
 
   if (!sorted.length) return `
     <div class="tbl-wrap">
       <div class="empty">
-        Sin movimientos este mes.<br>
+        Sin movimientos este mes.${_canWriteMenuTxs(menu) ? `<br>
         <button class="btn btn-primary btn-sm" style="margin-top:14px"
-                onclick="openNewRecordModal()">+ Añadir primero</button>
+                onclick="openNewRecordModal()">+ Añadir primero</button>` : ''}
       </div>
     </div>`;
 
@@ -102,14 +106,15 @@ function _menuTxTable(menuId, txs, cats, curr) {
             </tr>
           </thead>
           <tbody>
-            ${sorted.map(tx => _menuTxRow(menuId, tx, cats, curr)).join('')}
+            ${sorted.map(tx => _menuTxRow(menu, tx, cats, curr)).join('')}
           </tbody>
         </table>
       </div>
     </div>`;
 }
 
-function _menuTxRow(menuId, tx, cats, curr) {
+function _menuTxRow(menu, tx, cats, curr) {
+  const menuId = menu.id;
   const catMap = cats[tx.type] ?? {};
   const cat    = catMap[tx.category] ?? { label: tx.category ?? '—', color: '#64748b' };
   const sign   = tx.type === 'inc' ? '+' : '-';
@@ -129,8 +134,10 @@ function _menuTxRow(menuId, tx, cats, curr) {
       ${sign}${_fmtCurr(tx.amount, curr)}
     </td>
     <td style="text-align:right;white-space:nowrap">
-      <button class="btn-icon" onclick="openEditMenuTxModal(${menuId},${tx.id})">✏️</button>
-      <button class="btn-icon" onclick="confirmDeleteMenuTx(${menuId},${tx.id})">🗑️</button>
+      ${_canWriteMenuTxs(menu) ? `
+        <button class="btn-icon" onclick="openEditMenuTxModal(${menuId},${tx.id})">✏️</button>
+        <button class="btn-icon" onclick="confirmDeleteMenuTx(${menuId},${tx.id})">🗑️</button>
+      ` : ''}
     </td>
   </tr>`;
 }
@@ -159,6 +166,7 @@ function confirmDeleteMenuTx(menuId, txId) {
   if (!tx) return;
   showConfirm(`¿Eliminar "${esc(tx.description)}"?`, () => {
     deleteMenuTx(menuId, txId);
+    pushDeleteToGas(menuId, txId);
     renderCustomMenu(menuId);
     showToast('Movimiento eliminado', 'var(--red)');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
@@ -227,4 +235,86 @@ function confirmDeleteMenu(menuId) {
     switchView('inicio');
     showToast('Menú eliminado', 'var(--red)');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
+
+// ── Role helpers ──────────────────────────────────────────
+function _canEditMenu(menu) {
+  return menu.shared ? menu.myRole === 'admin' : currentUser?.role === 'admin';
+}
+
+function _canWriteMenuTxs(menu) {
+  return menu.shared ? menu.myRole !== 'viewer' : currentUser?.role !== 'viewer';
+}
+
+// ── Share modal ───────────────────────────────────────────
+function openShareModal(menuId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu) return;
+  document.getElementById('share-modal-menu-id').value      = menuId;
+  document.getElementById('share-modal-title').textContent  =
+    menu.shared ? 'Gestionar acceso compartido' : 'Compartir menú';
+  document.getElementById('share-sheet-name').value         = menu.sheetName ?? '';
+  document.getElementById('share-error').textContent        = '';
+  _renderShareUsers(menu);
+  document.getElementById('share-modal').classList.add('open');
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').classList.remove('open');
+}
+
+function _renderShareUsers(menu) {
+  const users = loadUsers().filter(u => u.id !== currentUser?.id);
+  const el    = document.getElementById('share-users-list');
+  if (!users.length) {
+    el.innerHTML = '<div class="empty" style="font-size:.82rem;padding:12px 0">Sin otros usuarios registrados</div>';
+    return;
+  }
+  el.innerHTML = users.map(u => {
+    const sw      = menu.sharedWith?.find(s => s.name === u.name);
+    const checked = sw ? 'checked' : '';
+    const role    = sw?.role ?? 'viewer';
+    return `<div class="cat-row" style="gap:8px;align-items:center">
+      <input type="checkbox" id="share-chk-${u.id}" value="${u.id}" ${checked}
+             onchange="document.getElementById('share-role-${u.id}').disabled=!this.checked"
+             style="margin:0;width:16px;height:16px;cursor:pointer;accent-color:var(--acc)">
+      <label for="share-chk-${u.id}" style="flex:1;cursor:pointer">${esc(u.name)}</label>
+      <select id="share-role-${u.id}" ${checked ? '' : 'disabled'}
+              style="width:auto;padding:4px 8px;font-size:.8rem">
+        <option value="viewer" ${role === 'viewer' ? 'selected' : ''}>Visitante</option>
+        <option value="editor" ${role === 'editor' ? 'selected' : ''}>Editor</option>
+        <option value="admin"  ${role === 'admin'  ? 'selected' : ''}>Admin</option>
+      </select>
+    </div>`;
+  }).join('');
+}
+
+async function saveShareModal() {
+  const menuId    = parseInt(document.getElementById('share-modal-menu-id').value, 10);
+  const sheetName = document.getElementById('share-sheet-name').value.trim();
+  const errEl     = document.getElementById('share-error');
+  errEl.textContent = '';
+
+  if (!sheetName)    { errEl.textContent = 'Nombre de hoja obligatorio.'; return; }
+  if (!getGasUrl())  { errEl.textContent = 'Configura la URL de GAS en el panel Admin.'; return; }
+
+  const users      = loadUsers().filter(u => u.id !== currentUser?.id);
+  const sharedWith = users
+    .filter(u => document.getElementById(`share-chk-${u.id}`)?.checked)
+    .map(u => ({ name: u.name, role: document.getElementById(`share-role-${u.id}`)?.value ?? 'viewer' }));
+
+  shareMenu(menuId, sheetName, sharedWith);
+
+  try {
+    setSyncBadge('saving');
+    await pushSharedConfig();
+    setSyncBadge('ok');
+    closeShareModal();
+    buildNav();
+    renderCustomMenu(menuId);
+    showToast('Menú compartido ✓');
+  } catch (e) {
+    setSyncBadge('error');
+    errEl.textContent = 'Error al sincronizar: ' + e.message;
+  }
 }

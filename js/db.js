@@ -96,22 +96,22 @@ function getMenuTxs(menuId) {
 }
 
 function addMenuTx(menuId, fields) {
-  const d = loadData();
-  const m = d.customMenus.find(m => m.id === menuId);
+  const d  = loadData();
+  const m  = d.customMenus.find(m => m.id === menuId);
   if (!m) return null;
-  const tx = { id: m.nextDataId++, ...fields };
+  const tx = { id: m.nextDataId++, updatedAt: new Date().toISOString(), ...fields };
   m.data.push(tx);
   saveData();
   return tx;
 }
 
 function updateMenuTx(menuId, txId, fields) {
-  const d = loadData();
-  const m = d.customMenus.find(m => m.id === menuId);
+  const d   = loadData();
+  const m   = d.customMenus.find(m => m.id === menuId);
   if (!m) return;
   const idx = m.data.findIndex(t => t.id === txId);
   if (idx < 0) return;
-  m.data[idx] = { ...m.data[idx], ...fields };
+  m.data[idx] = { ...m.data[idx], ...fields, updatedAt: new Date().toISOString() };
   saveData();
 }
 
@@ -121,4 +121,70 @@ function deleteMenuTx(menuId, txId) {
   if (!m) return;
   m.data = m.data.filter(t => t.id !== txId);
   saveData();
+}
+
+// ── Share helpers ─────────────────────────────────────────
+function shareMenu(menuId, sheetName, sharedWith) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+  Object.assign(m, { shared: true, sheetName, sharedWith, myRole: m.myRole ?? 'admin' });
+  saveData();
+}
+
+function unshareMenu(menuId) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+  Object.assign(m, { shared: false, sheetName: null, sharedWith: [] });
+  saveData();
+}
+
+function setMenuLastPulled(menuId, ts) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+  m.lastPulledAt = ts;
+  saveData();
+}
+
+// LWW merge — remote rows with newer updatedAt win
+function mergeMenuRows(menuId, remoteRows) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return;
+
+  const map = new Map(m.data.map(r => [String(r.id), { ...r }]));
+
+  for (const remote of remoteRows) {
+    const key      = String(remote.id);
+    const local    = map.get(key);
+    const remoteTs = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+    const localTs  = local?.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+
+    if (!local) {
+      if (!Number(remote.deleted)) map.set(key, _gasRowToTx(remote));
+    } else if (remoteTs > localTs) {
+      if (Number(remote.deleted)) map.delete(key);
+      else map.set(key, _gasRowToTx(remote));
+    }
+  }
+
+  m.data = [...map.values()];
+  const maxId = m.data.reduce((mx, t) => Math.max(mx, t.id), 0);
+  if (m.nextDataId <= maxId) m.nextDataId = maxId + 1;
+  saveData();
+}
+
+function _gasRowToTx(row) {
+  return {
+    id:          parseInt(row.id, 10),
+    date:        String(row.date || '').slice(0, 10),
+    amount:      parseFloat(row.amount) || 0,
+    description: String(row.description || ''),
+    type:        String(row.type || 'exp'),
+    category:    String(row.category || ''),
+    notes:       String(row.notes || ''),
+    updatedAt:   String(row.updatedAt || '')
+  };
 }

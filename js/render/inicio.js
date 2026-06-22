@@ -316,6 +316,7 @@ function saveTx() {
     else    addMenuTx(mid, fields);
     closeTxModal();
     renderCustomMenu(mid);
+    onMenuSaved(mid);
   } else {
     if (id) updateTx(parseInt(id, 10), fields);
     else    addTx(fields);
