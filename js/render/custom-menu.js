@@ -735,12 +735,28 @@ function openShareModal(menuId) {
     menu.shared ? 'Gestionar acceso compartido' : 'Compartir menú';
   document.getElementById('share-sheet-name').value         = menu.sheetName ?? '';
   document.getElementById('share-error').textContent        = '';
+  document.getElementById('btn-unshare').style.display      = menu.shared ? '' : 'none';
   _renderShareUsers(menu);
   document.getElementById('share-modal').classList.add('open');
 }
 
 function closeShareModal() {
   document.getElementById('share-modal').classList.remove('open');
+}
+
+async function confirmUnshareMenu() {
+  const menuId = parseInt(document.getElementById('share-modal-menu-id').value, 10);
+  const menu   = getCustomMenu(menuId);
+  if (!menu) return;
+  if (!confirm(`¿Dejar de compartir "${menu.name}"? Los datos locales se conservan pero el menú dejará de sincronizarse.`)) return;
+  unshareMenu(menuId);
+  try {
+    if (getGasUrl()) await pushSharedConfig();
+  } catch { /* non-fatal */ }
+  closeShareModal();
+  buildNav();
+  renderCustomMenu(menuId);
+  showToast('Menú dejado de compartir');
 }
 
 function _renderShareUsers(menu) {
