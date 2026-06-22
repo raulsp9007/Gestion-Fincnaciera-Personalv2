@@ -166,7 +166,11 @@ function renderCustomMenu(menuId) {
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:1.6rem">${esc(menu.icon ?? '📋')}</span>
         <h2 style="font-size:1.1rem;font-weight:700">${esc(menu.name)}</h2>
-        ${menu.shared ? `<span style="font-size:.68rem;padding:2px 7px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:600">Compartido</span>` : ''}
+        ${menu.shared ? (() => {
+          const others = (menu.sharedWith ?? []).filter(u => u.name !== currentUser?.name);
+          const names  = others.length ? others.map(u => u.name).join(', ') : 'solo tú';
+          return `<span title="Compartido con: ${esc(names)}" style="font-size:.68rem;padding:2px 8px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:600;cursor:default">Compartido · ${esc(names)}</span>`;
+        })() : ''}
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${_canWriteMenuTxs(menu) ? `
