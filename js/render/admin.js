@@ -140,10 +140,21 @@ async function testGasUrl() {
     _setGasStatus('ok', 'Conectado ✓ — sincronizando…');
     // Pull config y menús compartidos inmediatamente tras conectar
     await connectAndSync();
+    await pushUsersToGas();
     _setGasStatus('ok', 'Conectado ✓');
     buildNav();
   } catch (e) {
     _setGasStatus('error', 'Error: ' + e.message);
+  }
+}
+
+async function manualPushUsers() {
+  if (!getGasUrl()) { showToast('Configura la URL del servidor primero', 'var(--yellow)'); return; }
+  try {
+    await pushUsersToGas();
+    showToast('Usuarios subidos al servidor ✓', 'var(--green)');
+  } catch (e) {
+    showToast('Error al subir usuarios: ' + e.message, 'var(--red)');
   }
 }
 
