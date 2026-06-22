@@ -58,6 +58,7 @@ function renderInicio() {
         <div class="value">${fmtMoney(bal)}</div>
       </div>
     </div>
+    ${_buildBudgetBars(txs)}
     <div class="charts">
       <div class="chart-box">
         <h3>Gastos por categoría</h3>
@@ -324,6 +325,43 @@ function saveTx() {
     renderInicio();
   }
   showToast(id ? 'Movimiento actualizado' : 'Movimiento guardado');
+}
+
+// ── Budget progress bars ──────────────────────────────────
+function _buildBudgetBars(txs) {
+  const budgets = getBudgets();
+  const entries = Object.entries(budgets);
+  if (!entries.length) return '';
+
+  const cats     = loadData().globalCats.exp ?? {};
+  const expByCat = {};
+  for (const tx of txs.filter(t => t.type === 'exp')) {
+    expByCat[tx.category] = (expByCat[tx.category] ?? 0) + tx.amount;
+  }
+
+  const bars = entries.map(([key, { monthly }]) => {
+    const cat   = cats[key] ?? { label: key, color: '#64748b' };
+    const spent = expByCat[key] ?? 0;
+    const pct   = Math.min(100, Math.round((spent / monthly) * 100));
+    const col   = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:4px">
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block;flex-shrink:0"></span>
+          ${esc(cat.label)}
+        </span>
+        <span style="color:${col};font-weight:600">${fmtMoney(spent)} / ${fmtMoney(monthly)}</span>
+      </div>
+      <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:24px">
+    <h3 style="font-size:.85rem;font-weight:600;margin-bottom:14px;color:var(--text2)">Presupuestos del mes</h3>
+    ${bars}
+  </div>`;
 }
 
 function confirmDeleteTx(txId) {

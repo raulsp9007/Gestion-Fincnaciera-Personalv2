@@ -250,15 +250,22 @@
       <span id="admin-gas-status" style="font-size:.75rem">No configurada</span>
     </div>
 
-    <!-- Importar datos -->
-    <div class="section-title" style="margin-top:24px">Importar datos</div>
-    <p style="font-size:.78rem;color:var(--text2);margin:6px 0 10px">
-      Importa un export JSON de CashMap v1 o una copia de seguridad v2. Los datos existentes no se borran.
+    <!-- Presupuestos -->
+    <div class="section-title" style="margin-top:24px">Presupuestos</div>
+    <button class="btn btn-ghost btn-sm" onclick="openBudgetsModal()">💰 Gestionar presupuestos mensuales</button>
+
+    <!-- Datos -->
+    <div class="section-title" style="margin-top:24px">Datos</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none"
+             onchange="handleImportFile(this)">
+      <button class="btn btn-ghost btn-sm"
+              onclick="document.getElementById('import-file').click()">📥 Importar JSON</button>
+    </div>
+    <p style="font-size:.72rem;color:var(--text2);margin:6px 0 0">
+      El export incluye todos los datos locales. El import no borra datos existentes.
     </p>
-    <input type="file" id="import-file" accept=".json" style="display:none"
-           onchange="handleImportFile(this)">
-    <button class="btn btn-ghost btn-sm"
-            onclick="document.getElementById('import-file').click()">📥 Importar JSON</button>
 
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAdminPanel()">Cerrar</button>
@@ -295,6 +302,65 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeUserForm()">Cancelar</button>
       <button class="btn btn-primary" onclick="submitUserForm()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CATEGORÍAS MODAL ──────────────────────────────────── -->
+<div class="modal-overlay" id="cats-modal">
+  <div class="modal" style="width:460px">
+    <h3>🏷️ Categorías</h3>
+    <div style="display:flex;gap:8px;margin:12px 0 16px">
+      <button id="cats-type-exp" class="cats-tab active" onclick="setCatsType('exp')">↓ Gastos</button>
+      <button id="cats-type-inc" class="cats-tab"        onclick="setCatsType('inc')">↑ Ingresos</button>
+    </div>
+    <div id="cats-list"></div>
+    <!-- Sub-formulario inline -->
+    <div id="cat-form" style="display:none;margin-top:14px;padding:14px;background:var(--bg3);border-radius:10px">
+      <input type="hidden" id="cat-form-key">
+      <div class="form-grid">
+        <div class="form-row" style="margin-bottom:0">
+          <label>Nombre</label>
+          <input id="cat-form-label" type="text" placeholder="Ej: Alimentación"
+                 autocomplete="off" oninput="updateCatPreview()">
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>Color</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="cat-form-color" type="color" value="#3b82f6"
+                   oninput="updateCatPreview()"
+                   style="width:44px;height:36px;padding:2px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);cursor:pointer;flex-shrink:0">
+            <span id="cat-form-preview"
+                  style="flex:1;padding:4px 10px;border-radius:99px;font-size:.75rem;font-weight:600;text-align:center">
+              Vista previa
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="login-error" id="cat-form-error"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-ghost btn-sm"   onclick="closeCatForm()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveCatForm()">Guardar</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost"    onclick="closeCatsModal()">Cerrar</button>
+      <button class="btn btn-primary btn-sm" onclick="openCatForm()">+ Nueva</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PRESUPUESTOS MODAL ─────────────────────────────────── -->
+<div class="modal-overlay" id="budgets-modal">
+  <div class="modal" style="width:420px">
+    <h3>💰 Presupuestos mensuales</h3>
+    <p style="font-size:.78rem;color:var(--text2);margin:-8px 0 16px">
+      Límite de gasto por categoría al mes. Deja vacío para sin límite.
+    </p>
+    <div id="budgets-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost"   onclick="closeBudgetsModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveBudgetsModal()">Guardar</button>
     </div>
   </div>
 </div>

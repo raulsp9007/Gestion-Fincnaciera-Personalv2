@@ -66,9 +66,6 @@ function openUserMenu() {
   }
 }
 
-// ── Stubs de fases futuras ────────────────────────────────
-function openCatsModal() { showToast('Próximamente', 'var(--yellow)'); }
-
 // ── PWA install prompt ────────────────────────────────────
 let _deferredPrompt = null;
 

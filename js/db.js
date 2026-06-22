@@ -281,3 +281,16 @@ function importV1Data(raw) {
   saveData();
   return stats;
 }
+
+// ── Presupuestos ──────────────────────────────────────────
+function getBudgets() {
+  return loadData().budgets ?? {};
+}
+
+function setBudget(catKey, monthly) {
+  const d = loadData();
+  if (!d.budgets) d.budgets = {};
+  if (!monthly || monthly <= 0) delete d.budgets[catKey];
+  else d.budgets[catKey] = { monthly };
+  saveData();
+}

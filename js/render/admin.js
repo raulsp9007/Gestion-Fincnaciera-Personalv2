@@ -143,6 +143,22 @@ async function testGasUrl() {
   }
 }
 
+// ── Exportar datos ───────────────────────────────────────
+function exportData() {
+  const d    = loadData();
+  const json = JSON.stringify({ ...d, exportedAt: new Date().toISOString() }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `cashmap-v2-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Exportado ✓');
+}
+
 // ── Importar datos ────────────────────────────────────────
 function handleImportFile(input) {
   const file = input.files?.[0];
@@ -181,7 +197,7 @@ function handleImportFile(input) {
   reader.readAsText(file);
 }
 
-// ── Eliminar ──────────────────────────────────────────────
+// ── Eliminar usuario ──────────────────────────────────────
 function confirmDeleteUser(userId) {
   const u = loadUsers().find(u => u.id === userId);
   if (!u) return;
@@ -190,4 +206,159 @@ function confirmDeleteUser(userId) {
     renderAdminUsers();
     showToast('Usuario eliminado', 'var(--red)');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
+
+// ── Categorías ────────────────────────────────────────────
+let _catsType = 'exp';
+
+function openCatsModal() {
+  _catsType = 'exp';
+  _setCatsTypeUI();
+  renderCatsList();
+  closeCatForm();
+  document.getElementById('cats-modal').classList.add('open');
+}
+
+function closeCatsModal() {
+  document.getElementById('cats-modal').classList.remove('open');
+}
+
+function setCatsType(type) {
+  _catsType = type;
+  _setCatsTypeUI();
+  renderCatsList();
+  closeCatForm();
+}
+
+function _setCatsTypeUI() {
+  document.getElementById('cats-type-exp').classList.toggle('active', _catsType === 'exp');
+  document.getElementById('cats-type-inc').classList.toggle('active', _catsType === 'inc');
+}
+
+function renderCatsList() {
+  const cats = loadData().globalCats[_catsType] ?? {};
+  const el   = document.getElementById('cats-list');
+  const entries = Object.entries(cats);
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty" style="padding:12px 0;font-size:.82rem">Sin categorías. Crea la primera.</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([key, cat]) => `
+    <div class="cat-row">
+      <span style="width:10px;height:10px;border-radius:50%;background:${cat.color};flex-shrink:0;display:inline-block"></span>
+      <span class="cat-row-label">${esc(cat.label)}</span>
+      <div class="cat-row-actions">
+        <button onclick="openCatForm('${key}')">✏️</button>
+        <button onclick="confirmDeleteCat('${key}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openCatForm(key) {
+  const cats = loadData().globalCats[_catsType] ?? {};
+  const cat  = key ? cats[key] : null;
+  document.getElementById('cat-form-key').value   = key ?? '';
+  document.getElementById('cat-form-label').value = cat?.label ?? '';
+  document.getElementById('cat-form-color').value = cat?.color ?? '#3b82f6';
+  document.getElementById('cat-form-error').textContent = '';
+  updateCatPreview();
+  document.getElementById('cat-form').style.display = '';
+  document.getElementById('cat-form-label').focus();
+}
+
+function closeCatForm() {
+  document.getElementById('cat-form').style.display = 'none';
+}
+
+function updateCatPreview() {
+  const color = document.getElementById('cat-form-color').value;
+  const label = document.getElementById('cat-form-label').value || 'Vista previa';
+  const prev  = document.getElementById('cat-form-preview');
+  prev.textContent      = label;
+  prev.style.background = color + '22';
+  prev.style.color      = color;
+}
+
+function saveCatForm() {
+  const key   = document.getElementById('cat-form-key').value.trim();
+  const label = document.getElementById('cat-form-label').value.trim();
+  const color = document.getElementById('cat-form-color').value;
+  const errEl = document.getElementById('cat-form-error');
+  errEl.textContent = '';
+
+  if (!label) { errEl.textContent = 'Nombre obligatorio.'; return; }
+
+  const d = loadData();
+  if (!d.globalCats[_catsType]) d.globalCats[_catsType] = {};
+  const cats = d.globalCats[_catsType];
+
+  if (key) {
+    cats[key] = { ...cats[key], label, color };
+  } else {
+    const base     = label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'cat';
+    const finalKey = cats[base] ? base + '_' + Date.now() : base;
+    cats[finalKey] = { label, color };
+  }
+
+  saveData();
+  closeCatForm();
+  renderCatsList();
+  showToast(key ? 'Categoría actualizada' : 'Categoría creada');
+}
+
+function confirmDeleteCat(key) {
+  const cats = loadData().globalCats[_catsType] ?? {};
+  const cat  = cats[key];
+  if (!cat) return;
+  showConfirm(`¿Eliminar categoría "${cat.label}"?`, () => {
+    const d = loadData();
+    delete d.globalCats[_catsType][key];
+    saveData();
+    renderCatsList();
+    showToast('Categoría eliminada', 'var(--red)');
+  }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
+
+// ── Presupuestos ──────────────────────────────────────────
+function openBudgetsModal() {
+  _renderBudgetsList();
+  document.getElementById('budgets-modal').classList.add('open');
+}
+
+function closeBudgetsModal() {
+  document.getElementById('budgets-modal').classList.remove('open');
+}
+
+function _renderBudgetsList() {
+  const cats    = loadData().globalCats.exp ?? {};
+  const budgets = getBudgets();
+  const el      = document.getElementById('budgets-list');
+  const entries = Object.entries(cats);
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty" style="font-size:.82rem;padding:12px 0">Sin categorías de gastos</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([key, cat]) => {
+    const monthly = budgets[key]?.monthly ?? '';
+    return `<div class="cat-row" style="gap:10px">
+      <span style="width:10px;height:10px;border-radius:50%;background:${cat.color};flex-shrink:0;display:inline-block"></span>
+      <span class="cat-row-label">${esc(cat.label)}</span>
+      <input type="number" id="budget-${key}" value="${monthly}" min="0" step="1"
+             placeholder="Sin límite"
+             style="width:100px;text-align:right;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.83rem">
+      <span style="color:var(--text2);font-size:.78rem;flex-shrink:0">€/mes</span>
+    </div>`;
+  }).join('');
+}
+
+function saveBudgetsModal() {
+  const cats = loadData().globalCats.exp ?? {};
+  for (const key of Object.keys(cats)) {
+    const val = parseFloat(document.getElementById('budget-' + key)?.value ?? '');
+    setBudget(key, isNaN(val) ? null : val);
+  }
+  closeBudgetsModal();
+  renderInicio();
+  showToast('Presupuestos guardados');
 }
