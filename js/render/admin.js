@@ -355,7 +355,8 @@ function closeBudgetsModal() {
 }
 
 function _renderBudgetsList() {
-  const cats    = loadData().globalCats.exp ?? {};
+  const d       = loadData();
+  const cats    = d.globalCats.exp ?? {};
   const budgets = getBudgets();
   const el      = document.getElementById('budgets-list');
   const entries = Object.entries(cats);
@@ -363,15 +364,45 @@ function _renderBudgetsList() {
     el.innerHTML = '<div class="empty" style="font-size:.82rem;padding:12px 0">Sin categorías de gastos</div>';
     return;
   }
+
+  // Gasto del mes actual en inicio
+  const ym       = new Date().toISOString().slice(0, 7);
+  const expByCat = {};
+  for (const tx of (d.inicio ?? []).filter(t => t.type === 'exp' && t.date.startsWith(ym))) {
+    expByCat[tx.category] = (expByCat[tx.category] ?? 0) + tx.amount;
+  }
+
   el.innerHTML = entries.map(([key, cat]) => {
     const monthly = budgets[key]?.monthly ?? '';
-    return `<div class="cat-row" style="gap:10px">
-      <span style="width:10px;height:10px;border-radius:50%;background:${cat.color};flex-shrink:0;display:inline-block"></span>
-      <span class="cat-row-label">${esc(cat.label)}</span>
-      <input type="number" id="budget-${key}" value="${monthly}" min="0" step="1"
-             placeholder="Sin límite"
-             style="width:100px;text-align:right;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.83rem">
-      <span style="color:var(--text2);font-size:.78rem;flex-shrink:0">€/mes</span>
+    const spent   = expByCat[key] ?? 0;
+    const hasBudget = !!monthly;
+    const pct       = hasBudget ? Math.min(100, Math.round((spent / monthly) * 100)) : 0;
+    const col       = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
+    const remaining = hasBudget ? Math.max(0, monthly - spent) : 0;
+
+    const progressHtml = hasBudget ? `
+      <div style="margin-top:6px">
+        <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:2px;transition:width .3s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;margin-top:2px">
+          <span style="color:${col};font-weight:700">${pct}%  gastado: ${fmtMoney(spent)}</span>
+          ${pct < 100
+            ? `<span style="color:var(--text2)">Restante: ${fmtMoney(remaining)}</span>`
+            : `<span style="color:var(--red);font-weight:700">⚠ Excedido ${fmtMoney(spent - monthly)}</span>`}
+        </div>
+      </div>` : (spent > 0 ? `<div style="font-size:.68rem;color:var(--text2);margin-top:4px">Gastado este mes: ${fmtMoney(spent)}</div>` : '');
+
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div class="cat-row" style="gap:10px;border:none;padding:0">
+        <span style="width:10px;height:10px;border-radius:50%;background:${cat.color};flex-shrink:0;display:inline-block"></span>
+        <span class="cat-row-label">${esc(cat.label)}</span>
+        <input type="number" id="budget-${key}" value="${monthly}" min="0" step="1"
+               placeholder="Sin límite"
+               style="width:100px;text-align:right;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.83rem">
+        <span style="color:var(--text2);font-size:.78rem;flex-shrink:0">€/mes</span>
+      </div>
+      ${progressHtml}
     </div>`;
   }).join('');
 }

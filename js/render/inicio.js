@@ -424,11 +424,12 @@ function _buildBudgetBars(txs) {
   }
 
   const bars = entries.map(([key, { monthly }]) => {
-    const cat   = cats[key] ?? { label: key, color: '#64748b' };
-    const spent = expByCat[key] ?? 0;
-    const pct   = Math.min(100, Math.round((spent / monthly) * 100));
-    const col   = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
-    return `<div style="margin-bottom:10px">
+    const cat       = cats[key] ?? { label: key, color: '#64748b' };
+    const spent     = expByCat[key] ?? 0;
+    const remaining = Math.max(0, monthly - spent);
+    const pct       = Math.min(100, Math.round((spent / monthly) * 100));
+    const col       = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
+    return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:4px">
         <span style="display:flex;align-items:center;gap:6px">
           <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block;flex-shrink:0"></span>
@@ -438,6 +439,12 @@ function _buildBudgetBars(txs) {
       </div>
       <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-top:3px">
+        <span style="color:${col};font-weight:700">${pct}%</span>
+        ${pct < 100
+          ? `<span style="color:var(--text2)">Restante: ${fmtMoney(remaining)}</span>`
+          : `<span style="color:var(--red);font-weight:700">⚠ Excedido ${fmtMoney(spent - monthly)}</span>`}
       </div>
     </div>`;
   }).join('');
