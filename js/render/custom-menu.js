@@ -105,8 +105,8 @@ function _menuTxTable(menu, txs, cats, curr) {
         <table>
           <thead>
             <tr>
-              <th>Fecha</th><th>Descripción</th><th>Categoría</th>
-              <th style="text-align:right">Importe</th><th></th>
+              <th>Fecha</th><th>Monto</th><th>Descripción</th>
+              <th>Tipo</th><th>Categoría</th><th>Notas</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -118,30 +118,24 @@ function _menuTxTable(menu, txs, cats, curr) {
 }
 
 function _menuTxRow(menu, tx, cats, curr) {
-  const menuId = menu.id;
-  const catMap = cats[tx.type] ?? {};
-  const cat    = catMap[tx.category] ?? { label: tx.category ?? '—', color: '#64748b' };
-  const sign   = tx.type === 'inc' ? '+' : '-';
-  const col    = tx.type === 'inc' ? 'var(--green)' : 'var(--red)';
-
-  const recurLbl = { semanal: '↻ sem', mensual: '↻ mes', anual: '↻ año' }[tx.recurring] ?? '';
+  const menuId    = menu.id;
+  const catMap    = cats[tx.type] ?? {};
+  const cat       = catMap[tx.category] ?? { label: tx.category ?? '—', color: '#a78bfa' };
+  const typeLabel = tx.type === 'inc' ? 'Ingreso' : 'Gasto';
+  const sign      = tx.type === 'inc' ? '+' : '-';
 
   return `<tr>
     <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}</td>
+    <td class="amount ${tx.type}" style="white-space:nowrap">
+      ${sign}${_fmtCurr(tx.amount, curr)}${_recBadge(tx)}
+    </td>
+    <td style="font-weight:500">${esc(tx.description)}</td>
+    <td><span class="badge ${tx.type}">${typeLabel}</span></td>
     <td>
-      <div style="font-weight:500;display:flex;align-items:center;gap:5px">
-        ${esc(tx.description)}
-        ${recurLbl ? `<span style="font-size:.62rem;padding:1px 5px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:700;flex-shrink:0">${recurLbl}</span>` : ''}
-      </div>
-      ${tx.notes ? `<div style="font-size:.72rem;color:var(--text2)">${esc(tx.notes)}</div>` : ''}
+      <span class="cat-dot" style="background:${cat.color}"></span>
+      <span class="home-cat-badge">${esc(cat.label)}</span>
     </td>
-    <td>
-      <span style="padding:2px 8px;border-radius:99px;font-size:.73rem;font-weight:600;
-                   background:${cat.color}22;color:${cat.color}">${esc(cat.label)}</span>
-    </td>
-    <td style="text-align:right;font-weight:700;color:${col};white-space:nowrap">
-      ${sign}${_fmtCurr(tx.amount, curr)}
-    </td>
+    <td>${_renderNote(tx.notes)}</td>
     <td style="text-align:right;white-space:nowrap">
       ${_canWriteMenuTxs(menu) ? `
         <button class="btn-icon" onclick="openEditMenuTxModal(${menuId},${tx.id})">✏️</button>

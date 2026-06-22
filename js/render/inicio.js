@@ -98,6 +98,32 @@ function selectInicioMonth(ym) {
   renderInicio();
 }
 
+// ── Recurring badge (v1 style) ────────────────────────────
+function _recBadge(tx) {
+  if (!tx.recurring) return '';
+  const lbl = { semanal: 'Semanal', mensual: 'Mensual', anual: 'Anual' }[tx.recurring] || tx.recurring;
+  let nextStr = '';
+  if (tx.recurringNext) {
+    const d = new Date(tx.recurringNext + 'T00:00:00');
+    nextStr = ' · ' + d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+  }
+  const title = `Recurrencia: ${lbl}${tx.recurringNext ? ' — Próxima: ' + tx.recurringNext : ''}`;
+  return `<span class="rec-badge" title="${esc(title)}">🔄 ${lbl}${nextStr}</span>`;
+}
+
+// ── Expandable note (v1 style) ────────────────────────────
+function _renderNote(note) {
+  if (!note || !note.trim()) return '<span style="color:var(--text2);font-size:.78rem">—</span>';
+  if (note.length <= 40) return `<span style="color:var(--text2);font-size:.78rem">${esc(note)}</span>`;
+  const uid = 'n' + Math.random().toString(36).slice(2, 8);
+  return `<span id="${uid}t" style="color:var(--text2);font-size:.78rem;cursor:pointer"
+    onclick="this.style.display='none';document.getElementById('${uid}f').style.display='inline'"
+    >${esc(note.slice(0, 40))}…</span><span id="${uid}f"
+    style="display:none;color:var(--text2);font-size:.78rem;cursor:pointer"
+    onclick="this.style.display='none';document.getElementById('${uid}t').style.display='inline'"
+    >${esc(note)}</span>`;
+}
+
 // ── Transaction table ─────────────────────────────────────
 function _buildTxTable(txs, cats) {
   const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
@@ -121,9 +147,11 @@ function _buildTxTable(txs, cats) {
           <thead>
             <tr>
               <th>Fecha</th>
+              <th>Monto</th>
               <th>Descripción</th>
+              <th>Tipo</th>
               <th>Categoría</th>
-              <th style="text-align:right">Importe</th>
+              <th>Notas</th>
               <th></th>
             </tr>
           </thead>
@@ -136,31 +164,23 @@ function _buildTxTable(txs, cats) {
 }
 
 function _buildTxRow(tx, cats) {
-  const catMap = cats[tx.type] ?? {};
-  const cat    = catMap[tx.category] ?? { label: tx.category ?? '—', color: '#64748b' };
-  const sign   = tx.type === 'inc' ? '+' : '-';
-  const col    = tx.type === 'inc' ? 'var(--green)' : 'var(--red)';
-
-  const recurLbl = { semanal: '↻ sem', mensual: '↻ mes', anual: '↻ año' }[tx.recurring] ?? '';
+  const catMap    = cats[tx.type] ?? {};
+  const cat       = catMap[tx.category] ?? { label: tx.category ?? '—', color: '#a78bfa' };
+  const typeLabel = tx.type === 'inc' ? 'Ingreso' : 'Gasto';
+  const sign      = tx.type === 'inc' ? '+' : '-';
 
   return `<tr>
     <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}</td>
+    <td class="amount ${tx.type}" style="white-space:nowrap">
+      ${sign}${fmtMoney(tx.amount)}${_recBadge(tx)}
+    </td>
+    <td style="font-weight:500">${esc(tx.description)}</td>
+    <td><span class="badge ${tx.type}">${typeLabel}</span></td>
     <td>
-      <div style="font-weight:500;display:flex;align-items:center;gap:5px">
-        ${esc(tx.description)}
-        ${recurLbl ? `<span style="font-size:.62rem;padding:1px 5px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:700;flex-shrink:0">${recurLbl}</span>` : ''}
-      </div>
-      ${tx.notes ? `<div style="font-size:.72rem;color:var(--text2)">${esc(tx.notes)}</div>` : ''}
+      <span class="cat-dot" style="background:${cat.color}"></span>
+      <span class="home-cat-badge">${esc(cat.label)}</span>
     </td>
-    <td>
-      <span style="padding:2px 8px;border-radius:99px;font-size:.73rem;font-weight:600;
-                   background:${cat.color}22;color:${cat.color}">
-        ${esc(cat.label)}
-      </span>
-    </td>
-    <td style="text-align:right;font-weight:700;color:${col};white-space:nowrap">
-      ${sign}${fmtMoney(tx.amount)}
-    </td>
+    <td>${_renderNote(tx.notes)}</td>
     <td style="text-align:right;white-space:nowrap">
       <button class="btn-icon" title="Editar"   onclick="openEditTxModal(${tx.id})">✏️</button>
       <button class="btn-icon" title="Eliminar" onclick="confirmDeleteTx(${tx.id})">🗑️</button>
