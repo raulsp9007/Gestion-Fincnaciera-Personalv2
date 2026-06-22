@@ -172,7 +172,8 @@ async function _syncOneMenu(menu) {
       renderCustomMenu(menu.id);
     }
     setSyncBadge('ok');
-  } catch {
+  } catch (e) {
+    console.error('[_syncOneMenu]', menu.sheetName, e.message);
     setSyncBadge('error');
   }
 }
