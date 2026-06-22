@@ -262,14 +262,27 @@ function handleMenuImportFile(input) {
     catch { showToast('JSON inválido', 'var(--red)'); return; }
 
     // Collect importable transaction groups
+    // v1 format: transactions / home / customMenus:{name:[]}
+    // v2 format: txs / homeTxs / customMenus:[{data:[]}]  or inicio[]
     const groups = [];
-    const mainTxs = raw.txs ?? raw.inicio ?? [];
+
+    const mainTxs = raw.transactions ?? raw.txs ?? raw.inicio ?? [];
     if (mainTxs.length) groups.push({ label: `${mainTxs.length} movimientos principales`, data: mainTxs });
 
-    if (raw.homeTxs?.length) groups.push({ label: `${raw.homeTxs.length} movimientos de hogar`, data: raw.homeTxs });
+    const homeTxs = raw.home ?? raw.homeTxs ?? [];
+    if (homeTxs.length) groups.push({ label: `${homeTxs.length} movimientos de hogar`, data: homeTxs });
 
-    for (const cm of (raw.customMenus ?? [])) {
-      if (cm.data?.length) groups.push({ label: `${cm.data.length} registros de menú "${cm.name}"`, data: cm.data });
+    // v1: customMenus es un objeto { nombreMenu: [txs] }
+    // v2: customMenus es un array  [ { name, data:[txs] } ]
+    const cms = raw.customMenus;
+    if (cms && !Array.isArray(cms)) {
+      for (const [name, data] of Object.entries(cms)) {
+        if (Array.isArray(data) && data.length) groups.push({ label: `${data.length} registros de "${name}"`, data });
+      }
+    } else if (Array.isArray(cms)) {
+      for (const cm of cms) {
+        if (cm.data?.length) groups.push({ label: `${cm.data.length} registros de "${cm.name}"`, data: cm.data });
+      }
     }
 
     if (!groups.length) { showToast('Sin movimientos que importar', 'var(--yellow)'); return; }
