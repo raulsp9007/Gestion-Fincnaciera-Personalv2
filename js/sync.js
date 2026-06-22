@@ -68,14 +68,12 @@ async function _pullSharedConfig() {
   const d = loadData();
   let changed = false;
 
-  // Identidad del servidor tiene precedencia sobre cuenta local para el matching
   const gasId    = (typeof getGasIdentity === 'function') ? getGasIdentity() : null;
-  const userName = gasId?.username ?? currentUser?.name;
-  // Admin local sin identidad de servidor ve todos los menús (recuperación tras borrar datos)
-  const isAdmin  = currentUser?.role === 'admin' && !gasId;
+  const userName = (gasId?.username ?? currentUser?.name ?? '').toLowerCase();
+  const isAdmin  = currentUser?.role === 'admin';
 
   for (const sm of sharedMenus) {
-    const access = sm.sharedWith?.find(u => u.name === userName);
+    const access = sm.sharedWith?.find(u => (u.name ?? '').toLowerCase() === userName);
     if (!access && !isAdmin) continue;
 
     const existing = d.customMenus.find(m => m.sheetName === sm.sheetName);
