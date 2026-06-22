@@ -282,6 +282,33 @@ function importV1Data(raw) {
   return stats;
 }
 
+// ── Import transactions into a specific menu ──────────────
+function importMenuTxs(menuId, rawTxs) {
+  const d = loadData();
+  const m = d.customMenus.find(m => m.id === menuId);
+  if (!m) return 0;
+  let nextId = m.nextDataId;
+  let count  = 0;
+  for (const tx of rawTxs) {
+    const date = String(tx.date || '').slice(0, 10);
+    if (!date) continue;
+    m.data.push({
+      id:          nextId++,
+      date,
+      amount:      Number(tx.amount) || 0,
+      description: String(tx.description || ''),
+      type:        String(tx.type || 'exp'),
+      category:    String(tx.category || ''),
+      notes:       String(tx.notes || ''),
+      updatedAt:   new Date().toISOString()
+    });
+    count++;
+  }
+  m.nextDataId = nextId;
+  saveData();
+  return count;
+}
+
 // ── Presupuestos ──────────────────────────────────────────
 function getBudgets() {
   return loadData().budgets ?? {};

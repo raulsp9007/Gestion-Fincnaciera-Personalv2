@@ -260,6 +260,8 @@
       <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar JSON</button>
       <input type="file" id="import-file" accept=".json" style="display:none"
              onchange="handleImportFile(this)">
+      <input type="file" id="menu-import-file" accept=".json" style="display:none"
+             onchange="handleMenuImportFile(this)">
       <button class="btn btn-ghost btn-sm"
               onclick="document.getElementById('import-file').click()">📥 Importar JSON</button>
     </div>

@@ -26,14 +26,18 @@ function renderCustomMenu(menuId) {
         <h2 style="font-size:1.1rem;font-weight:700">${esc(menu.name)}</h2>
         ${menu.shared ? `<span style="font-size:.68rem;padding:2px 7px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:600">Compartido</span>` : ''}
       </div>
-      ${_canEditMenu(menu) ? `
-        <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${_canWriteMenuTxs(menu) ? `
+          <button class="btn btn-ghost btn-sm" onclick="openMenuImportPicker(${menuId})">📥 Importar</button>
+        ` : ''}
+        ${_canEditMenu(menu) ? `
           ${!menu.shared ? `
             <button class="btn btn-ghost btn-sm" onclick="openEditMenuModal(${menuId})">✏️ Editar</button>
             <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="confirmDeleteMenu(${menuId})">🗑️</button>
           ` : ''}
           <button class="btn btn-ghost btn-sm" onclick="openShareModal(${menuId})">🔗 ${menu.shared ? 'Acceso' : 'Compartir'}</button>
-        </div>` : ''}
+        ` : ''}
+      </div>
     </div>
     ${_menuMonthTabs(menuId, ym)}
     <div class="cards">
@@ -235,6 +239,54 @@ function confirmDeleteMenu(menuId) {
     switchView('inicio');
     showToast('Menú eliminado', 'var(--red)');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
+
+// ── Import from v1 JSON into this menu ───────────────────
+function openMenuImportPicker(menuId) {
+  const inp = document.getElementById('menu-import-file');
+  inp.dataset.menuId = menuId;
+  inp.value = '';
+  inp.click();
+}
+
+function handleMenuImportFile(input) {
+  const menuId = parseInt(input.dataset.menuId, 10);
+  const file   = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    let raw;
+    try { raw = JSON.parse(e.target.result); }
+    catch { showToast('JSON inválido', 'var(--red)'); return; }
+
+    // Collect importable transaction groups
+    const groups = [];
+    const mainTxs = raw.txs ?? raw.inicio ?? [];
+    if (mainTxs.length) groups.push({ label: `${mainTxs.length} movimientos principales`, data: mainTxs });
+
+    if (raw.homeTxs?.length) groups.push({ label: `${raw.homeTxs.length} movimientos de hogar`, data: raw.homeTxs });
+
+    for (const cm of (raw.customMenus ?? [])) {
+      if (cm.data?.length) groups.push({ label: `${cm.data.length} registros de menú "${cm.name}"`, data: cm.data });
+    }
+
+    if (!groups.length) { showToast('Sin movimientos que importar', 'var(--yellow)'); return; }
+
+    const allTxs = groups.flatMap(g => g.data);
+    const menu   = getCustomMenu(menuId);
+    showConfirm(
+      `¿Importar ${allTxs.length} movimientos al menú "${menu?.name ?? ''}"?\n• ` + groups.map(g => g.label).join('\n• '),
+      () => {
+        const count = importMenuTxs(menuId, allTxs);
+        renderCustomMenu(menuId);
+        showToast(`Importados ${count} movimientos ✓`);
+      },
+      { icon: '📥', okLabel: 'Importar' }
+    );
+  };
+  reader.readAsText(file);
 }
 
 // ── Role helpers ──────────────────────────────────────────
