@@ -17,17 +17,28 @@ async function callGas(action, payload = {}) {
   const url = getGasUrl();
   if (!url) throw new Error('URL de GAS no configurada');
 
-  const resp = await fetch(url, {
-    method:   'POST',
-    redirect: 'follow',
-    headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
-    body:     JSON.stringify({ action, payload })
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const data = await resp.json();
-  if (!data.ok) throw new Error(data.error ?? 'Error desconocido del servidor');
-  return data;
+  try {
+    const resp = await fetch(url, {
+      method:   'POST',
+      redirect: 'follow',
+      headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:     JSON.stringify({ action, payload }),
+      signal:   controller.signal
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error ?? 'Error desconocido del servidor');
+    return data;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Timeout: el servidor tardó demasiado');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ── Sync de usuarios via GAS ──────────────────────────────
