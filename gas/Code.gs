@@ -1,11 +1,20 @@
 // ── CashMap v2 — Google Apps Script backend ───────────────
 // INSTRUCCIONES DE DESPLIEGUE:
-// 1. Abre script.google.com → Nuevo proyecto (vinculado a un Google Sheet)
-// 2. Pega este código en Code.gs
-// 3. Implementar → Nueva implementación → Tipo: App web
-//    - Ejecutar como: Yo (Me)
-//    - Quién tiene acceso: Cualquier usuario
-// 4. Copia la URL y pégala en CashMap → Admin → URL del servidor
+//
+// OPCIÓN A (recomendada): desde el Google Sheet
+//   1. Abre el Google Sheet → Extensiones → Apps Script
+//   2. Pega este código en Code.gs → Guardar
+//   3. Implementar → Nueva implementación → App web
+//      Ejecutar como: Yo | Quién tiene acceso: Cualquier usuario
+//   4. Autoriza los permisos cuando los pida
+//   5. Copia la URL → CashMap Admin → URL del servidor
+//
+// OPCIÓN B: script independiente (script.google.com)
+//   1. Pega el código
+//   2. Ve a Configuración del proyecto → Propiedades del script
+//   3. Agrega: SPREADSHEET_ID = <ID del Google Sheet>
+//      (el ID está en la URL del Sheet: /d/ESTE_ID/edit)
+//   4. Implementa igual que opción A
 
 // ── Punto de entrada GET (ping / diagnóstico) ─────────────
 function doGet(e) {
@@ -38,11 +47,20 @@ function doPost(e) {
   }
 }
 
+// ── Spreadsheet helper ────────────────────────────────────
+function _getSpreadsheet() {
+  const active = _getSpreadsheet();
+  if (active) return active;
+  const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  if (!id) throw new Error('Configura SPREADSHEET_ID en Propiedades del script o usa Extensiones → Apps Script desde el Sheet');
+  return SpreadsheetApp.openById(id);
+}
+
 // ── Sheet _config (clave/valor global) ───────────────────
 const CONFIG_SHEET = '_config';
 
 function _getConfig() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const ss    = _getSpreadsheet();
   const sheet = ss.getSheetByName(CONFIG_SHEET);
   if (!sheet) return { ok: true, config: {} };
 
@@ -57,7 +75,7 @@ function _getConfig() {
 
 function _setConfig({ key, value }) {
   if (!key) throw new Error('key requerido');
-  const ss  = SpreadsheetApp.getActiveSpreadsheet();
+  const ss  = _getSpreadsheet();
   let sheet = ss.getSheetByName(CONFIG_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(CONFIG_SHEET);
@@ -101,7 +119,7 @@ function _ensureSheet(ss, sheetName) {
 // Sin `since` devuelve todas las filas no eliminadas.
 function _pullRows({ sheetName, since }) {
   if (!sheetName) throw new Error('sheetName requerido');
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const ss    = _getSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return { ok: true, rows: [], pulledAt: new Date().toISOString() };
 
@@ -130,7 +148,7 @@ function _pushRows({ sheetName, rows }) {
   if (!Array.isArray(rows))     throw new Error('rows debe ser array');
   if (!rows.length)             return { ok: true, upserted: 0 };
 
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const ss    = _getSpreadsheet();
   const sheet = _ensureSheet(ss, sheetName);
 
   const data    = sheet.getDataRange().getValues();
@@ -168,7 +186,7 @@ function _deleteRow({ sheetName, id, updatedBy }) {
   if (!sheetName) throw new Error('sheetName requerido');
   if (!id)        throw new Error('id requerido');
 
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const ss    = _getSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return { ok: true }; // no-op si el sheet no existe
 
