@@ -191,27 +191,41 @@
   <div class="modal">
     <h3 id="tx-modal-title">Nuevo movimiento</h3>
     <input type="hidden" id="tx-id">
-    <div class="type-toggle">
-      <button id="tx-type-exp" class="type-btn active" onclick="setTxType('exp')">↓ Gasto</button>
-      <button id="tx-type-inc" class="type-btn"        onclick="setTxType('inc')">↑ Ingreso</button>
-    </div>
     <div class="form-grid">
       <div class="form-row">
         <label>Fecha</label>
         <input id="tx-date" type="date">
       </div>
       <div class="form-row">
-        <label>Importe (€)</label>
+        <label>Importe <span id="tx-modal-curr" style="font-size:.75rem;color:var(--text2)">(€)</span></label>
         <input id="tx-amount" type="number" min="0.01" step="0.01" placeholder="0,00">
       </div>
     </div>
     <div class="form-row">
-      <label>Categoría</label>
-      <select id="tx-cat"></select>
-    </div>
-    <div class="form-row">
       <label>Descripción</label>
-      <input id="tx-desc" type="text" placeholder="Ej: Mercadona" autocomplete="off">
+      <input id="tx-desc" type="text" placeholder="Ej: Pago de luz, Salario de mayo..." autocomplete="off">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Tipo</label>
+        <select id="tx-type" onchange="onTxTypeChange()">
+          <option value="exp">🔴 Gasto</option>
+          <option value="inc">💚 Ingreso</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Categoría</label>
+        <select id="tx-cat" onchange="_updateCatColorPicker()"></select>
+      </div>
+    </div>
+    <div class="form-row" id="tx-color-row">
+      <label>Color en gráfico</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="color" id="tx-cat-color"
+               style="width:40px;height:36px;border:1px solid var(--border);border-radius:8px;padding:2px;background:var(--bg);cursor:pointer"
+               onchange="_saveCatColor()">
+        <span style="font-size:.78rem;color:var(--text2)">Color del pastel para esta categoría</span>
+      </div>
     </div>
     <div class="form-row">
       <label>Notas <small style="color:var(--text2);font-weight:400">(opcional)</small></label>
@@ -221,15 +235,15 @@
       <label>Recurrencia <small style="color:var(--text2);font-weight:400">(opcional)</small></label>
       <select id="tx-recurring">
         <option value="">Sin recurrencia</option>
-        <option value="semanal">↻ Semanal</option>
-        <option value="mensual">↻ Mensual</option>
-        <option value="anual">↻ Anual</option>
+        <option value="semanal">🔄 Semanal</option>
+        <option value="mensual">🔄 Mensual</option>
+        <option value="anual">🔄 Anual</option>
       </select>
     </div>
     <div class="login-error" id="tx-error"></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost"    onclick="closeTxModal()">Cancelar</button>
-      <button class="btn btn-primary"  onclick="saveTx()">Guardar</button>
+      <button class="btn btn-ghost"   onclick="closeTxModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTx()">Guardar</button>
     </div>
   </div>
 </div>

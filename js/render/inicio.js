@@ -258,17 +258,43 @@ function _drawCharts(txs, cats) {
 }
 
 // ── Tx modal — shared state ───────────────────────────────
-let _txType    = 'exp';
 let _txContext = { src: 'inicio', menuId: null }; // shared with custom-menu.js
 
+// ── Category color helpers ────────────────────────────────
+function _getCatColor(catKey) {
+  const cats = loadData().globalCats;
+  return cats.inc[catKey]?.color ?? cats.exp[catKey]?.color ?? '#64748b';
+}
+
+function _updateCatColorPicker() {
+  const inp = document.getElementById('tx-cat-color');
+  if (!inp) return;
+  const catKey = document.getElementById('tx-cat').value;
+  inp.value = _getCatColor(catKey);
+}
+
+function _saveCatColor() {
+  const catKey = document.getElementById('tx-cat').value;
+  const color  = document.getElementById('tx-cat-color').value;
+  if (!catKey || !color) return;
+  const d    = loadData();
+  const side = d.globalCats.inc[catKey] ? 'inc' : 'exp';
+  if (d.globalCats[side]?.[catKey]) {
+    d.globalCats[side][catKey].color = color;
+    saveData();
+    showToast('Color guardado');
+  }
+}
+
+// ── Modal open / close ────────────────────────────────────
 function openNewRecordModal() {
-  // Detect context from current view (defined in nav.js)
   if (typeof _currentView !== 'undefined' && _currentView.startsWith('menu-')) {
     _txContext = { src: 'custom', menuId: parseInt(_currentView.slice(5), 10) };
   } else {
     _txContext = { src: 'inicio', menuId: null };
   }
-  _txType = 'exp';
+  const curr = _txContext.menuId ? (getCustomMenu(_txContext.menuId)?.currency ?? '€') : '€';
+  document.getElementById('tx-modal-curr').textContent = `(${curr})`;
   document.getElementById('tx-id').value              = '';
   document.getElementById('tx-modal-title').textContent = 'Nuevo movimiento';
   document.getElementById('tx-date').value            = new Date().toISOString().slice(0, 10);
@@ -277,8 +303,9 @@ function openNewRecordModal() {
   document.getElementById('tx-notes').value           = '';
   document.getElementById('tx-recurring').value       = '';
   document.getElementById('tx-error').textContent     = '';
-  _setTxTypeUI('exp');
+  document.getElementById('tx-type').value            = 'exp';
   _updateTxCatOptions();
+  _updateCatColorPicker();
   document.getElementById('tx-modal').classList.add('open');
 }
 
@@ -286,7 +313,7 @@ function openEditTxModal(txId) {
   _txContext = { src: 'inicio', menuId: null };
   const tx   = getTxs().find(t => t.id === txId);
   if (!tx) return;
-  _txType = tx.type;
+  document.getElementById('tx-modal-curr').textContent = '(€)';
   document.getElementById('tx-id').value              = txId;
   document.getElementById('tx-modal-title').textContent = 'Editar movimiento';
   document.getElementById('tx-date').value            = tx.date;
@@ -295,25 +322,21 @@ function openEditTxModal(txId) {
   document.getElementById('tx-notes').value           = tx.notes ?? '';
   document.getElementById('tx-recurring').value       = tx.recurring || '';
   document.getElementById('tx-error').textContent     = '';
-  _setTxTypeUI(tx.type);
-  _updateTxCatOptions();                              // 3. populate
-  document.getElementById('tx-cat').value = tx.category; // 4. restore
+  document.getElementById('tx-type').value            = tx.type;  // 1. set type
+  _updateTxCatOptions();                                           // 2. populate cats
+  document.getElementById('tx-cat').value             = tx.category; // 3. restore cat
+  _updateCatColorPicker();
   document.getElementById('tx-modal').classList.add('open');
 }
 
-function setTxType(type) {
-  _txType = type;
-  _setTxTypeUI(type);
+function onTxTypeChange() {
   _updateTxCatOptions();
-}
-
-function _setTxTypeUI(type) {
-  document.getElementById('tx-type-inc').classList.toggle('active', type === 'inc');
-  document.getElementById('tx-type-exp').classList.toggle('active', type === 'exp');
+  _updateCatColorPicker();
 }
 
 function _updateTxCatOptions() {
-  const cats = loadData().globalCats[_txType] ?? {};
+  const type = document.getElementById('tx-type')?.value ?? 'exp';
+  const cats = loadData().globalCats[type] ?? {};
   document.getElementById('tx-cat').innerHTML =
     Object.entries(cats).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
 }
@@ -326,6 +349,7 @@ function saveTx() {
   const id     = document.getElementById('tx-id').value;
   const date   = document.getElementById('tx-date').value;
   const amount = parseFloat(document.getElementById('tx-amount').value);
+  const type   = document.getElementById('tx-type').value;
   const cat    = document.getElementById('tx-cat').value;
   const desc   = document.getElementById('tx-desc').value.trim();
   const notes  = document.getElementById('tx-notes').value.trim();
@@ -338,7 +362,7 @@ function saveTx() {
 
   const recurring     = document.getElementById('tx-recurring').value || false;
   const recurringNext = recurring ? nextOccurrence(date, recurring) : undefined;
-  const fields = { date, amount, description: desc, type: _txType, category: cat, notes,
+  const fields = { date, amount, description: desc, type, category: cat, notes,
                    recurring, recurringNext };
 
   if (_txContext.src === 'custom') {

@@ -3,20 +3,59 @@
 // ── Per-menu active month ─────────────────────────────────
 const _menuMonth = {};
 
+// ── Per-menu chart instances ──────────────────────────────
+const _menuCharts = {};
+
 // ── Main render ───────────────────────────────────────────
 function renderCustomMenu(menuId) {
   const menu = getCustomMenu(menuId);
   if (!menu) { switchView('inicio'); return; }
 
   if (!_menuMonth[menuId]) _menuMonth[menuId] = new Date().toISOString().slice(0, 7);
-  const ym   = _menuMonth[menuId];
-  const cats = loadData().globalCats;
-  const txs  = getMenuTxs(menuId).filter(t => t.date.startsWith(ym));
-  const curr = menu.currency || '€';
+  const ym      = _menuMonth[menuId];
+  const cats    = loadData().globalCats;
+  const allTxs  = getMenuTxs(menuId);
+  const monthTxs = allTxs.filter(t => t.date.startsWith(ym));
+  const curr    = menu.currency || '€';
 
-  const inc = txs.filter(t => t.type === 'inc').reduce((s, t) => s + t.amount, 0);
-  const exp = txs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
+  // Read filter state before wiping innerHTML
+  const fSearch = document.getElementById(`cmf-s-${menuId}`)?.value ?? '';
+  const fType   = document.getElementById(`cmf-t-${menuId}`)?.value ?? '';
+  const fCat    = document.getElementById(`cmf-c-${menuId}`)?.value ?? '';
+  const fFrom   = document.getElementById(`cmf-f-${menuId}`)?.value ?? '';
+  const fTo     = document.getElementById(`cmf-to-${menuId}`)?.value ?? '';
+
+  const inc = monthTxs.filter(t => t.type === 'inc').reduce((s, t) => s + t.amount, 0);
+  const exp = monthTxs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
   const bal = inc - exp;
+
+  // 4th card: projection for current month, else record count
+  const thisYM = new Date().toISOString().slice(0, 7);
+  let fourthCard;
+  if (ym === thisYM) {
+    const today      = new Date();
+    const daysIn     = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dayOf      = today.getDate();
+    const projExp    = dayOf > 0 ? Math.round((exp / dayOf) * daysIn * 100) / 100 : exp;
+    const projNet    = inc - projExp;
+    fourthCard = `<div class="card ${projNet >= 0 ? '' : 'red'}">
+      <div class="label">Proyección al ${daysIn}</div>
+      <div class="value" style="font-size:1.15rem;color:var(--text2)">${projNet >= 0 ? '+' : ''}${_fmtCurr(Math.abs(projNet), curr)}</div>
+      <div style="font-size:.72rem;color:var(--text2);margin-top:2px">gasto est. ${_fmtCurr(projExp, curr)}</div>
+    </div>`;
+  } else {
+    fourthCard = `<div class="card blue">
+      <div class="label">Registros</div>
+      <div class="value" style="font-size:1.6rem">${monthTxs.length}</div>
+      <div style="font-size:.72rem;color:var(--text2);margin-top:2px">de ${allTxs.length} total</div>
+    </div>`;
+  }
+
+  // Category options for filter
+  const allCatsHtml = [
+    ...Object.entries(cats.inc ?? {}).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`),
+    ...Object.entries(cats.exp ?? {}).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`)
+  ].join('');
 
   const el = document.getElementById('view-custom');
   el.innerHTML = `
@@ -41,21 +80,144 @@ function renderCustomMenu(menuId) {
     </div>
     ${_menuMonthTabs(menuId, ym)}
     <div class="cards">
-      <div class="card green">
-        <div class="label">Ingresos</div>
-        <div class="value">${_fmtCurr(inc, curr)}</div>
+      <div class="card green"><div class="label">Ingresos</div><div class="value">${_fmtCurr(inc, curr)}</div></div>
+      <div class="card red"><div class="label">Gastos</div><div class="value">${_fmtCurr(exp, curr)}</div></div>
+      <div class="card ${bal >= 0 ? 'blue' : 'red'}"><div class="label">Balance</div><div class="value">${_fmtCurr(bal, curr)}</div></div>
+      ${fourthCard}
+    </div>
+    <div class="charts">
+      <div class="chart-box">
+        <h3>Ingresos vs Gastos (${esc(menu.name)})</h3>
+        <canvas id="cm-chart-bar-${menuId}" height="160"></canvas>
       </div>
-      <div class="card red">
-        <div class="label">Gastos</div>
-        <div class="value">${_fmtCurr(exp, curr)}</div>
-      </div>
-      <div class="card ${bal >= 0 ? 'blue' : 'red'}">
-        <div class="label">Balance</div>
-        <div class="value">${_fmtCurr(bal, curr)}</div>
+      <div class="chart-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0">Gastos por categoría</h3>
+          <button class="btn btn-ghost btn-sm" onclick="openMenuCatColors(${menuId})">🎨 Colores</button>
+        </div>
+        <canvas id="cm-chart-cat-${menuId}" height="160"></canvas>
       </div>
     </div>
-    ${_menuTxTable(menu, txs, cats, curr)}
+    ${_menuTxTable(menu, monthTxs, cats, curr, fSearch, fType, fCat, fFrom, fTo)}
   `;
+
+  _drawMenuCharts(menuId, allTxs, cats, curr);
+}
+
+// ── Menu charts ───────────────────────────────────────────
+function _drawMenuCharts(menuId, allTxs, cats, curr) {
+  if (!_menuCharts[menuId]) _menuCharts[menuId] = {};
+  if (_menuCharts[menuId].bar) { _menuCharts[menuId].bar.destroy(); _menuCharts[menuId].bar = null; }
+  if (_menuCharts[menuId].cat) { _menuCharts[menuId].cat.destroy(); _menuCharts[menuId].cat = null; }
+  if (typeof Chart === 'undefined') return;
+
+  // Bar — monthly inc vs exp (all months in data)
+  const months = [...new Set(allTxs.map(t => t.date.slice(0, 7)))].sort();
+  const barInc = months.map(ym => allTxs.filter(t => t.type === 'inc' && t.date.startsWith(ym)).reduce((s, t) => s + t.amount, 0));
+  const barExp = months.map(ym => allTxs.filter(t => t.type === 'exp' && t.date.startsWith(ym)).reduce((s, t) => s + t.amount, 0));
+  const ctx1   = document.getElementById(`cm-chart-bar-${menuId}`);
+  if (ctx1 && months.length) {
+    _menuCharts[menuId].bar = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: months.map(ym => _monthLabel(ym)),
+        datasets: [
+          { label: 'Ingresos', data: barInc, backgroundColor: '#22c55e99', borderRadius: 4 },
+          { label: 'Gastos',   data: barExp, backgroundColor: '#ef444499', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 10, padding: 8 } },
+          tooltip: { callbacks: { label: c => ` ${_fmtCurr(c.raw, curr)}` } }
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }
+        }
+      }
+    });
+  }
+
+  // Doughnut — top expense cats
+  const catTotals = {};
+  for (const t of allTxs.filter(t => t.type === 'exp')) {
+    catTotals[t.category] = (catTotals[t.category] ?? 0) + t.amount;
+  }
+  const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const ctx2   = document.getElementById(`cm-chart-cat-${menuId}`);
+  if (ctx2 && sorted.length) {
+    const expCats = cats.exp ?? {};
+    _menuCharts[menuId].cat = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: sorted.map(([k]) => expCats[k]?.label ?? k),
+        datasets: [{ data: sorted.map(([, v]) => v), backgroundColor: sorted.map(([k]) => _getCatColor(k)), borderWidth: 2, borderColor: '#1e293b' }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10, padding: 8 } },
+          tooltip: { callbacks: { label: c => ` ${_fmtCurr(c.raw, curr)}` } }
+        }
+      }
+    });
+  }
+}
+
+// ── Cat color modal (simplified) ──────────────────────────
+function openMenuCatColors(menuId) {
+  const allTxs = getMenuTxs(menuId);
+  const cats   = loadData().globalCats;
+  const totals = {};
+  for (const t of allTxs.filter(t => t.type === 'exp')) {
+    totals[t.category] = (totals[t.category] ?? 0) + t.amount;
+  }
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const curr   = getCustomMenu(menuId)?.currency ?? '€';
+
+  const rows = sorted.map(([key, amt]) => {
+    const label = (cats.inc[key] ?? cats.exp[key])?.label ?? key;
+    const color = _getCatColor(key);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <input type="color" value="${color}" data-key="${key}"
+             oninput="_setCatColorFromPicker('${key}',this.value)"
+             style="width:36px;height:36px;border:none;background:none;cursor:pointer;border-radius:6px;padding:0">
+      <span style="flex:1;font-size:.88rem">${esc(label)}</span>
+      <span style="font-size:.75rem;color:var(--text2)">${_fmtCurr(amt, curr)}</span>
+    </div>`;
+  }).join('');
+
+  const overlay = document.getElementById('catcolors-overlay');
+  if (!overlay) {
+    // Create overlay on first use
+    const div = document.createElement('div');
+    div.id        = 'catcolors-overlay';
+    div.className = 'modal-overlay';
+    div.innerHTML = `<div class="modal" style="max-width:400px">
+      <h3>🎨 Colores de categorías</h3>
+      <div id="catcolors-body"></div>
+      <div class="modal-actions" style="margin-top:12px">
+        <button class="btn btn-primary" onclick="document.getElementById('catcolors-overlay').classList.remove('open');renderCustomMenu(${menuId})">Listo</button>
+      </div>
+    </div>`;
+    document.body.appendChild(div);
+  } else {
+    // Update close button for current menuId
+    const btn = overlay.querySelector('.modal-actions .btn-primary');
+    if (btn) btn.onclick = () => { overlay.classList.remove('open'); renderCustomMenu(menuId); };
+  }
+  document.getElementById('catcolors-body').innerHTML = rows || '<p style="color:var(--text2);font-size:.82rem;padding:12px 0">Sin gastos registrados.</p>';
+  document.getElementById('catcolors-overlay').classList.add('open');
+}
+
+function _setCatColorFromPicker(catKey, color) {
+  const d    = loadData();
+  const side = d.globalCats.inc[catKey] ? 'inc' : d.globalCats.exp[catKey] ? 'exp' : null;
+  if (!side) return;
+  d.globalCats[side][catKey].color = color;
+  saveData();
 }
 
 function _fmtCurr(n, curr) {
@@ -85,23 +247,58 @@ function selectMenuMonth(menuId, ym) {
 }
 
 // ── Transaction table ─────────────────────────────────────
-function _menuTxTable(menu, txs, cats, curr) {
+function _menuTxTable(menu, txs, cats, curr, fSearch = '', fType = '', fCat = '', fFrom = '', fTo = '') {
   const menuId = menu.id;
-  const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
 
-  if (!sorted.length) return `
-    <div class="tbl-wrap">
-      <div class="empty">
-        Sin movimientos este mes.${_canWriteMenuTxs(menu) ? `<br>
+  // Apply filters
+  let list = [...txs];
+  if (fSearch) list = list.filter(t => t.description.toLowerCase().includes(fSearch.toLowerCase()) || (t.notes ?? '').toLowerCase().includes(fSearch.toLowerCase()));
+  if (fType)   list = list.filter(t => t.type === fType);
+  if (fCat)    list = list.filter(t => t.category === fCat);
+  if (fFrom)   list = list.filter(t => t.date >= fFrom);
+  if (fTo)     list = list.filter(t => t.date <= fTo);
+
+  const sorted = list.sort((a, b) => b.date.localeCompare(a.date));
+
+  // Category options for filter dropdown
+  const catsHtml = [
+    ...Object.entries(cats.inc ?? {}).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`),
+    ...Object.entries(cats.exp ?? {}).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`)
+  ].join('');
+
+  const emptyMsg = sorted.length === 0 ? `
+    <div class="empty">
+      ${fSearch || fType || fCat || fFrom || fTo ? 'Sin resultados con estos filtros.' : 'Sin movimientos este mes.'}
+      ${!fSearch && !fType && !fCat && !fFrom && !fTo && _canWriteMenuTxs(menu) ? `<br>
         <button class="btn btn-primary btn-sm" style="margin-top:14px"
                 onclick="openNewRecordModal()">+ Añadir primero</button>` : ''}
-      </div>
-    </div>`;
+    </div>` : '';
 
   return `
     <div class="tbl-wrap">
-      <div class="tbl-header"><h3>Movimientos</h3></div>
-      <div class="tbl-scroll">
+      <div class="filters">
+        <input type="text" id="cmf-s-${menuId}" value="${esc(fSearch)}" placeholder="🔍 Buscar..."
+               oninput="renderCustomMenu(${menuId})">
+        <select id="cmf-t-${menuId}" onchange="renderCustomMenu(${menuId})">
+          <option value="" ${!fType ? 'selected' : ''}>Todos</option>
+          <option value="inc" ${fType === 'inc' ? 'selected' : ''}>💚 Ingresos</option>
+          <option value="exp" ${fType === 'exp' ? 'selected' : ''}>🔴 Gastos</option>
+        </select>
+        <select id="cmf-c-${menuId}" onchange="renderCustomMenu(${menuId})">
+          <option value="">Todas las categorías</option>
+          ${catsHtml}
+        </select>
+        <input type="date" id="cmf-f-${menuId}"  value="${esc(fFrom)}" title="Desde"
+               oninput="renderCustomMenu(${menuId})">
+        <input type="date" id="cmf-to-${menuId}" value="${esc(fTo)}"   title="Hasta"
+               oninput="renderCustomMenu(${menuId})">
+      </div>
+      <div class="tbl-header">
+        <h3>Movimientos</h3>
+        <span style="font-size:.78rem;color:var(--text2)">${sorted.length} registro(s)</span>
+      </div>
+      ${emptyMsg}
+      ${sorted.length ? `<div class="tbl-scroll">
         <table>
           <thead>
             <tr>
@@ -113,7 +310,7 @@ function _menuTxTable(menu, txs, cats, curr) {
             ${sorted.map(tx => _menuTxRow(menu, tx, cats, curr)).join('')}
           </tbody>
         </table>
-      </div>
+      </div>` : ''}
     </div>`;
 }
 
@@ -147,21 +344,23 @@ function _menuTxRow(menu, tx, cats, curr) {
 
 // ── Menu tx modal (edit) ──────────────────────────────────
 function openEditMenuTxModal(menuId, txId) {
-  const tx = getMenuTxs(menuId).find(t => t.id === txId);
+  const tx   = getMenuTxs(menuId).find(t => t.id === txId);
   if (!tx) return;
-  _txContext = { src: 'custom', menuId };
-  _txType    = tx.type;
-  document.getElementById('tx-id').value              = txId;
+  const menu = getCustomMenu(menuId);
+  _txContext  = { src: 'custom', menuId };
+  document.getElementById('tx-modal-curr').textContent  = `(${menu?.currency ?? '€'})`;
+  document.getElementById('tx-id').value                = txId;
   document.getElementById('tx-modal-title').textContent = 'Editar movimiento';
-  document.getElementById('tx-date').value            = tx.date;
-  document.getElementById('tx-amount').value          = tx.amount;
-  document.getElementById('tx-desc').value            = tx.description;
-  document.getElementById('tx-notes').value           = tx.notes ?? '';
-  document.getElementById('tx-recurring').value       = tx.recurring || '';
-  document.getElementById('tx-error').textContent     = '';
-  _setTxTypeUI(tx.type);
-  _updateTxCatOptions();
-  document.getElementById('tx-cat').value = tx.category;
+  document.getElementById('tx-date').value              = tx.date;
+  document.getElementById('tx-amount').value            = tx.amount;
+  document.getElementById('tx-desc').value              = tx.description;
+  document.getElementById('tx-notes').value             = tx.notes ?? '';
+  document.getElementById('tx-recurring').value         = tx.recurring || '';
+  document.getElementById('tx-error').textContent       = '';
+  document.getElementById('tx-type').value              = tx.type;  // 1. set type
+  _updateTxCatOptions();                                            // 2. populate cats
+  document.getElementById('tx-cat').value               = tx.category; // 3. restore cat
+  _updateCatColorPicker();
   document.getElementById('tx-modal').classList.add('open');
 }
 
