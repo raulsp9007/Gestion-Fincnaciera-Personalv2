@@ -487,8 +487,8 @@ function _menuTxRow(menu, tx, cats, curr, visibleCols) {
   const cellFor = key => {
     switch (key) {
       case 'fecha': return `<td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${tx.time}</span>` : ''}</td>`;
-      case 'monto': return `<td class="amount ${tx.type}" style="white-space:nowrap">${sign}${_fmtCurr(tx.amount, curr)}${_recBadge(tx)}</td>`;
-      case 'desc':  return `<td style="font-weight:500">${esc(tx.description)} ${attachBadge(tx.attachments)}</td>`;
+      case 'monto': return `<td class="amount ${tx.type}" style="white-space:nowrap">${sign}${_fmtCurr(tx.amount, curr)}</td>`;
+      case 'desc':  return `<td style="font-weight:500">${esc(tx.description)} ${attachBadge(tx.attachments)}${tx.recurring ? `<br>${_recBadge(tx)}` : ''}</td>`;
       case 'tipo':  return `<td><span class="badge ${tx.type}">${typeLabel}</span></td>`;
       case 'cat':   return `<td><span class="cat-dot" style="background:${cat.color}"></span><span class="home-cat-badge">${esc(cat.label)}</span></td>`;
       case 'notas': return `<td>${_renderNote(tx.notes)}</td>`;
