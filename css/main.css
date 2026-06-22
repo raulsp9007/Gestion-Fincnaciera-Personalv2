@@ -165,6 +165,11 @@ body.is-admin #tx-cat-cfg-btn{display:inline-flex}
 .month-tab:hover{background:var(--bg3);color:var(--text)}
 .month-tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
 
+/* ── ADMIN TABS ──────────────────────────────────────────── */
+.admin-tab{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:.78rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
+.admin-tab:hover{background:var(--bg3);color:var(--text)}
+.admin-tab.active{background:var(--acc);border-color:var(--acc);color:#fff}
+
 /* ── MISC ────────────────────────────────────────────────── */
 .hidden{display:none!important}
 .empty{text-align:center;padding:40px;color:var(--text2);font-size:.9rem}

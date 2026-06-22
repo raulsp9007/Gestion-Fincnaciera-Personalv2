@@ -6,6 +6,21 @@ function openAdminPanel() {
   renderGasSection();
   renderAutosaveSection();
   document.getElementById('admin-modal').classList.add('open');
+  switchAdminTab('usuarios');
+}
+
+function switchAdminTab(id) {
+  document.querySelectorAll('.admin-tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('admin-tab-' + id);
+  if (panel) panel.style.display = '';
+  // Activar botón correspondiente
+  const bar = document.getElementById('admin-tab-bar');
+  if (bar) {
+    const idx = ['usuarios','categorias','autosave','datos'].indexOf(id);
+    const btns = bar.querySelectorAll('.admin-tab');
+    if (btns[idx]) btns[idx].classList.add('active');
+  }
 }
 
 function closeAdminPanel() {
