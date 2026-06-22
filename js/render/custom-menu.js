@@ -719,7 +719,8 @@ function handleMenuImportFile(input) {
 
 // ── Role helpers ──────────────────────────────────────────
 function _canEditMenu(menu) {
-  return menu.shared ? menu.myRole === 'admin' : currentUser?.role === 'admin';
+  const role = currentUser?.role;
+  return menu.shared ? menu.myRole === 'admin' : (role === 'admin' || role === 'editor');
 }
 
 function _canWriteMenuTxs(menu) {
