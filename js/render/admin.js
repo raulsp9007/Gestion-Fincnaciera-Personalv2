@@ -143,6 +143,44 @@ async function testGasUrl() {
   }
 }
 
+// ── Importar datos ────────────────────────────────────────
+function handleImportFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    let raw;
+    try { raw = JSON.parse(e.target.result); }
+    catch { showToast('JSON inválido', 'var(--red)'); return; }
+
+    const txCount     = (raw.txs ?? raw.inicio ?? []).length;
+    const menuCount   = (raw.customMenus ?? []).length;
+    const homeTxCount = (raw.homeTxs ?? []).length;
+
+    let msg = '¿Importar datos?';
+    const lines = [];
+    if (txCount)     lines.push(`${txCount} movimientos de inicio`);
+    if (menuCount)   lines.push(`${menuCount} menús personalizados`);
+    if (homeTxCount) lines.push(`${homeTxCount} movimientos de hogar`);
+    if (!lines.length) { showToast('Sin datos que importar', 'var(--yellow)'); return; }
+    msg += '\n• ' + lines.join('\n• ');
+
+    showConfirm(msg, () => {
+      try {
+        const stats = importV1Data(raw);
+        buildNav();
+        renderInicio();
+        showToast(`Importado: ${stats.txs} mov, ${stats.menus} menús (${stats.menuTxs} registros)`);
+      } catch (err) {
+        showToast('Error: ' + err.message, 'var(--red)');
+      }
+    }, { icon: '📥', okLabel: 'Importar' });
+  };
+  reader.readAsText(file);
+}
+
 // ── Eliminar ──────────────────────────────────────────────
 function confirmDeleteUser(userId) {
   const u = loadUsers().find(u => u.id === userId);

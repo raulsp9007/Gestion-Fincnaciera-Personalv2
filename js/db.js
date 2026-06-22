@@ -188,3 +188,96 @@ function _gasRowToTx(row) {
     updatedAt:   String(row.updatedAt || '')
   };
 }
+
+// ── Import from v1 / backup JSON ──────────────────────────
+function importV1Data(raw) {
+  const isV1 = Array.isArray(raw.txs);
+  const isV2 = raw.version === 2 || Array.isArray(raw.inicio);
+  if (!isV1 && !isV2) throw new Error('Formato no reconocido');
+
+  const d = loadData();
+  const stats = { txs: 0, menus: 0, menuTxs: 0 };
+
+  // ── Transacciones principales ─────────────────────────
+  const srcTxs = isV1 ? (raw.txs ?? []) : (raw.inicio ?? []);
+  let nextTxId = d.inicio.length ? Math.max(...d.inicio.map(t => t.id)) + 1 : 1;
+  for (const tx of srcTxs) {
+    d.inicio.push({
+      id:          nextTxId++,
+      date:        String(tx.date || '').slice(0, 10),
+      amount:      Number(tx.amount) || 0,
+      description: String(tx.description || ''),
+      type:        String(tx.type || 'exp'),
+      category:    String(tx.category || ''),
+      notes:       String(tx.notes || '')
+    });
+    stats.txs++;
+  }
+
+  // ── Categorías — merge sin sobreescribir ──────────────
+  if (raw.globalCats) {
+    for (const type of ['inc', 'exp']) {
+      if (!d.globalCats[type]) d.globalCats[type] = {};
+      for (const [key, cat] of Object.entries(raw.globalCats[type] ?? {})) {
+        if (!d.globalCats[type][key]) d.globalCats[type][key] = cat;
+      }
+    }
+  }
+
+  // ── Presupuestos — merge sin sobreescribir ────────────
+  if (raw.budgets) {
+    for (const [key, val] of Object.entries(raw.budgets)) {
+      if (!d.budgets[key]) d.budgets[key] = val;
+    }
+  }
+
+  // ── Menús personalizados ──────────────────────────────
+  let nextMenuId = d.customMenus.length ? Math.max(...d.customMenus.map(m => m.id)) + 1 : 1;
+  for (const menu of (raw.customMenus ?? [])) {
+    const newMenuId = nextMenuId++;
+    let nextDataId  = 1;
+    const data = (menu.data ?? []).map(tx => ({
+      id:          nextDataId++,
+      date:        String(tx.date || '').slice(0, 10),
+      amount:      Number(tx.amount) || 0,
+      description: String(tx.description || ''),
+      type:        String(tx.type || 'exp'),
+      category:    String(tx.category || ''),
+      notes:       String(tx.notes || ''),
+      updatedAt:   tx.updatedAt ?? new Date().toISOString()
+    }));
+    d.customMenus.push({
+      id: newMenuId, name: menu.name, icon: menu.icon ?? '📋',
+      currency: menu.currency ?? '€', data, nextDataId, shared: false
+    });
+    d.navOrder.push('menu-' + newMenuId);
+    stats.menus++;
+    stats.menuTxs += data.length;
+  }
+
+  // ── homeTxs (v1) → menú "Hogar (importado)" ──────────
+  if (isV1 && raw.homeTxs?.length) {
+    const newMenuId = nextMenuId++;
+    let nextDataId  = 1;
+    const data = raw.homeTxs.map(tx => ({
+      id:          nextDataId++,
+      date:        String(tx.date || '').slice(0, 10),
+      amount:      Number(tx.amount) || 0,
+      description: String(tx.description || ''),
+      type:        String(tx.type || 'exp'),
+      category:    String(tx.category || ''),
+      notes:       String(tx.notes || ''),
+      updatedAt:   new Date().toISOString()
+    }));
+    d.customMenus.push({
+      id: newMenuId, name: 'Hogar (importado)', icon: '🏠',
+      currency: '€', data, nextDataId, shared: false
+    });
+    d.navOrder.push('menu-' + newMenuId);
+    stats.menus++;
+    stats.menuTxs += data.length;
+  }
+
+  saveData();
+  return stats;
+}

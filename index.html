@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CashMap">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="css/main.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
@@ -81,6 +83,7 @@
         <span class="lbl" id="sync-lbl">Local</span>
       </div>
       <button id="btn-sync-now" onclick="forceSyncNow()">🔄 Sincronizar ahora</button>
+      <button id="btn-install" style="display:none;margin-top:6px;width:100%;padding:7px;border:1px solid var(--border);background:transparent;color:var(--acc);border-radius:6px;font-size:.72rem;cursor:pointer;transition:.15s" onclick="installPwa()">📲 Instalar app</button>
     </div>
   </div>
 
@@ -247,6 +250,16 @@
       <span id="admin-gas-status" style="font-size:.75rem">No configurada</span>
     </div>
 
+    <!-- Importar datos -->
+    <div class="section-title" style="margin-top:24px">Importar datos</div>
+    <p style="font-size:.78rem;color:var(--text2);margin:6px 0 10px">
+      Importa un export JSON de CashMap v1 o una copia de seguridad v2. Los datos existentes no se borran.
+    </p>
+    <input type="file" id="import-file" accept=".json" style="display:none"
+           onchange="handleImportFile(this)">
+    <button class="btn btn-ghost btn-sm"
+            onclick="document.getElementById('import-file').click()">📥 Importar JSON</button>
+
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAdminPanel()">Cerrar</button>
     </div>
@@ -328,6 +341,13 @@
 <script src="js/render/custom-menu.js"></script>
 <script src="js/render/admin.js"></script>
 <script src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./cashmap_sw.js').catch(() => {});
+    });
+  }
+</script>
 
 </body>
 </html>

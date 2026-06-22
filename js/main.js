@@ -69,6 +69,33 @@ function openUserMenu() {
 // ── Stubs de fases futuras ────────────────────────────────
 function openCatsModal() { showToast('Próximamente', 'var(--yellow)'); }
 
+// ── PWA install prompt ────────────────────────────────────
+let _deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.style.display = '';
+});
+
+window.addEventListener('appinstalled', () => {
+  _deferredPrompt = null;
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.style.display = 'none';
+});
+
+async function installPwa() {
+  if (!_deferredPrompt) return;
+  _deferredPrompt.prompt();
+  const { outcome } = await _deferredPrompt.userChoice;
+  _deferredPrompt = null;
+  if (outcome === 'accepted') {
+    const btn = document.getElementById('btn-install');
+    if (btn) btn.style.display = 'none';
+  }
+}
+
 // ── Pantallas ─────────────────────────────────────────────
 function _hideAllScreens() {
   ['setup-screen','login-screen'].forEach(id =>
