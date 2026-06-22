@@ -47,9 +47,11 @@ function openAdminSheet() {
   const chip = document.getElementById('admin-sheet-role');
   chip.textContent = currentUser?.role ?? '';
   chip.className = 'role-chip ' + (currentUser?.role ?? '');
-  // Mostrar opción admin solo a admins
-  const adminBtn = el.querySelector('.admin-sheet-btn[data-admin]');
-  if (adminBtn) adminBtn.style.display = currentUser?.role === 'admin' ? '' : 'none';
+  const role = currentUser?.role;
+  const adminBtn   = el.querySelector('.admin-sheet-btn[data-admin]');
+  const newMenuBtn = el.querySelector('.admin-sheet-btn[data-new-menu]');
+  if (adminBtn)   adminBtn.style.display   = role === 'admin' ? '' : 'none';
+  if (newMenuBtn) newMenuBtn.style.display = (role === 'admin' || role === 'editor') ? '' : 'none';
   el.classList.add('open');
 }
 

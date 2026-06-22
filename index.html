@@ -213,7 +213,10 @@
       <span id="admin-sheet-name"></span>
       <span class="role-chip" id="admin-sheet-role"></span>
     </div>
-    <button class="admin-sheet-btn" onclick="closeAdminSheet();openAdminPanel()">
+    <button class="admin-sheet-btn" data-new-menu onclick="closeAdminSheet();openNewMenuModal()">
+      <span>➕</span><span>Nuevo menú</span>
+    </button>
+    <button class="admin-sheet-btn" data-admin onclick="closeAdminSheet();openAdminPanel()">
       <span>⚙️</span><span>Panel Admin</span>
     </button>
     <button class="admin-sheet-btn" onclick="closeAdminSheet();openCatsModal()">
