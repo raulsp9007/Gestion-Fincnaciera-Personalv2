@@ -19,7 +19,13 @@ function _buildSidebar() {
     ${menus.map(m => `
       <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
          onclick="switchView('menu-${m.id}')">
-        <span class="ico">${esc(m.icon ?? '📋')}</span> ${esc(m.name)}
+        <span class="ico">${esc(m.icon ?? '📋')}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+        ${isAdmin ? `<span onclick="event.stopPropagation();confirmDeleteMenu(${m.id})"
+                          title="Eliminar menú"
+                          style="flex-shrink:0;padding:1px 5px;border-radius:5px;opacity:0;font-size:.75rem;color:var(--red);line-height:1;transition:.15s"
+                          onmouseenter="this.style.opacity='1'"
+                          onmouseleave="this.style.opacity='0'">🗑️</span>` : ''}
       </a>`).join('')}
     ${isAdmin ? `
     <a onclick="openNewMenuModal()">
