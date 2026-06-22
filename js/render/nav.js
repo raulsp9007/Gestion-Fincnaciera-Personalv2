@@ -2,6 +2,24 @@
 
 let _currentView = 'inicio';
 
+// ── Hide-local toggle ─────────────────────────────────────
+function _isHideLocalMenus() {
+  return localStorage.getItem('cashmap_v2_hide_local_menus') === '1';
+}
+
+function toggleHideLocalMenus() {
+  localStorage.setItem('cashmap_v2_hide_local_menus', _isHideLocalMenus() ? '0' : '1');
+  buildNav();
+}
+
+// ── Shared-users secondary line ───────────────────────────
+function _sharedUsersLine(sharedWith) {
+  if (!sharedWith?.length) return '';
+  const names = sharedWith.slice(0, 3).map(u => esc(u.name)).join(' · ');
+  const extra = sharedWith.length > 3 ? ` +${sharedWith.length - 3}` : '';
+  return `<div style="font-size:.58rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px">${names}${extra}</div>`;
+}
+
 // ── Build nav ─────────────────────────────────────────────
 function buildNav() {
   _buildSidebar();
@@ -9,8 +27,10 @@ function buildNav() {
 }
 
 function _buildSidebar() {
-  const isAdmin = currentUser?.role === 'admin';
-  const menus   = getCustomMenus();
+  const isAdmin   = currentUser?.role === 'admin';
+  const allMenus  = getCustomMenus();
+  const hideLocal = _isHideLocalMenus();
+  const menus     = hideLocal ? allMenus.filter(m => m.shared) : allMenus;
 
   document.getElementById('sidebar-nav').innerHTML = `
     <a class="${_currentView === 'inicio' ? 'active' : ''}" onclick="switchView('inicio')">
@@ -23,14 +43,20 @@ function _buildSidebar() {
       <a class="${_currentView === 'sdeudas-' + m.id ? 'active' : ''}"
          onclick="switchView('sdeudas-${m.id}')">
         <span class="ico">💳</span>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</div>
+          ${_sharedUsersLine(m.sharedWith)}
+        </div>
         <span title="Compartido" style="font-size:.6rem;padding:1px 6px;border-radius:99px;background:#22c55e22;color:#22c55e;font-weight:700;flex-shrink:0;line-height:1.6">Sync</span>
       </a>`).join('')}
     ${menus.map(m => `
       <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
          onclick="switchView('menu-${m.id}')">
         <span class="ico">${esc(m.icon ?? '📋')}</span>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</div>
+          ${m.shared ? _sharedUsersLine(m.sharedWith) : ''}
+        </div>
         ${m.shared ? `<span title="Compartido" style="font-size:.6rem;padding:1px 6px;border-radius:99px;background:#22c55e22;color:#22c55e;font-weight:700;flex-shrink:0;line-height:1.6">Sync</span>` : ''}
         ${isAdmin ? `<span onclick="event.stopPropagation();confirmDeleteMenu(${m.id})"
                           title="Eliminar menú"
@@ -46,6 +72,11 @@ function _buildSidebar() {
     <a onclick="openAdminPanel()">
       <span class="ico">⚙️</span> Admin
     </a>` : ''}
+    ${allMenus.some(m => !m.shared) ? `
+    <a onclick="toggleHideLocalMenus()" style="font-size:.78rem;color:var(--text2)">
+      <span class="ico">${hideLocal ? '👁️' : '🙈'}</span>
+      ${hideLocal ? 'Mostrar menús locales' : 'Ocultar menús locales'}
+    </a>` : ''}
     ${_buildGasIdentityNav()}
     <a class="nav-logout" onclick="logout()">
       <span class="ico">🚪</span> Cerrar sesión
@@ -54,9 +85,10 @@ function _buildSidebar() {
 }
 
 function _buildBottomNav() {
-  const initial     = (currentUser?.name ?? '?').charAt(0).toUpperCase();
-  const menus       = getCustomMenus();
-  const sharedDe    = getSharedDeudasMenus();
+  const initial   = (currentUser?.name ?? '?').charAt(0).toUpperCase();
+  const allMenus  = getCustomMenus();
+  const sharedDe  = getSharedDeudasMenus();
+  const menus     = _isHideLocalMenus() ? allMenus.filter(m => m.shared) : allMenus;
 
   document.getElementById('bottom-nav').innerHTML = `
     <a class="${_currentView === 'inicio' ? 'active' : ''}" onclick="switchView('inicio')">
