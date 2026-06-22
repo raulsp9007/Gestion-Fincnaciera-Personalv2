@@ -61,9 +61,12 @@ async function _pullSharedConfig() {
   const d = loadData();
   let changed = false;
 
+  const isAdmin = currentUser?.role === 'admin';
+
   for (const sm of sharedMenus) {
     const access = sm.sharedWith?.find(u => u.name === userName);
-    if (!access) continue; // no access for this user
+    // Admin ve todos los menús compartidos aunque su nombre no esté en sharedWith
+    if (!access && !isAdmin) continue;
 
     const existing = d.customMenus.find(m => m.sheetName === sm.sheetName);
     if (!existing) {
@@ -73,7 +76,7 @@ async function _pullSharedConfig() {
         id, name: sm.name, icon: sm.icon ?? '📋',
         currency: sm.currency ?? '€', data: [], nextDataId: 1,
         shared: true, sheetName: sm.sheetName,
-        myRole: access.role, sharedWith: sm.sharedWith ?? [],
+        myRole: access?.role ?? 'admin', sharedWith: sm.sharedWith ?? [],
         lastPulledAt: null
       });
       d.navOrder.push('menu-' + id);

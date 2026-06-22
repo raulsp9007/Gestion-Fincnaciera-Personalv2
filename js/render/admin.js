@@ -140,11 +140,27 @@ async function testGasUrl() {
     _setGasStatus('ok', 'Conectado ✓ — sincronizando…');
     // Pull config y menús compartidos inmediatamente tras conectar
     await connectAndSync();
-    await pushUsersToGas();
+    await _mergeAndPushUsers();
     _setGasStatus('ok', 'Conectado ✓');
     buildNav();
   } catch (e) {
     _setGasStatus('error', 'Error: ' + e.message);
+  }
+}
+
+// Pull usuarios de GAS, mergear con locales (GAS gana por nombre), push resultado.
+async function _mergeAndPushUsers() {
+  try {
+    const gasUsers   = await pullUsersFromGas(getGasUrl());
+    const localUsers = loadUsers();
+    const merged     = [...gasUsers];
+    for (const lu of localUsers) {
+      if (!merged.find(u => u.name === lu.name)) merged.push(lu);
+    }
+    saveUsers(merged);
+  } catch {
+    // Si GAS no tiene usuarios aún, solo push los locales
+    await pushUsersToGas();
   }
 }
 
