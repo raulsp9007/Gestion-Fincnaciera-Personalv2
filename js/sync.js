@@ -221,29 +221,35 @@ async function forceSyncNow() {
 }
 
 // ── Shared Deudas sync ────────────────────────────────────
-async function syncSharedDeudas() {
-  const menus = getSharedDeudasMenus();
+// Pull completo (sin delta): el servidor es la fuente de verdad.
+// Reemplaza menu.data en local con lo que devuelve el servidor.
+async function syncSharedDeudas(menuId) {
+  const menus = menuId
+    ? [getSharedDeudasMenu(menuId)].filter(Boolean)
+    : getSharedDeudasMenus();
   if (!menus.length || !getGasUrl()) return;
   for (const menu of menus) {
     if (!menu.sheetName) continue;
     try {
-      const r = await callGas('pullJsonRows', { sheetName: menu.sheetName, since: menu.lastPulledAt });
-      if (!r.rows?.length) continue;
+      const r = await callGas('pullJsonRows', { sheetName: menu.sheetName });
+      if (!r.rows) continue;
       const d = loadData();
       const m = (d.sharedDeudasMenus ?? []).find(m => m.id === menu.id);
       if (!m) continue;
-      const changed = _mergeSharedDeudasRows(m, r.rows);
-      if (changed) {
-        m.lastPulledAt = r.pulledAt;
-        saveData();
-        if (typeof _currentView !== 'undefined' && _currentView === 'sdeudas-' + menu.id) {
-          renderDeudas(menu.id);
-        }
+      // Reemplazar completamente — servidor manda la verdad
+      m.data = r.rows
+        .filter(row => !row.deleted)
+        .map(row => row.parsed)
+        .filter(Boolean);
+      saveData();
+      if (typeof _currentView !== 'undefined' && _currentView === 'sdeudas-' + menu.id) {
+        renderDeudas();  // sin arg — _deudaSource ya está seteado, evita re-trigger de sync
       }
     } catch { /* non-fatal */ }
   }
 }
 
+// Push de un registro (add/edit): sube la fila al servidor, luego re-pull.
 async function pushSharedDeudas(menuId) {
   const menu = getSharedDeudasMenu(menuId);
   if (!menu?.sheetName || !getGasUrl()) return;
@@ -255,6 +261,24 @@ async function pushSharedDeudas(menuId) {
     deleted:   0
   }));
   if (rows.length) await callGas('pushJsonRows', { sheetName: menu.sheetName, rows });
+  await syncSharedDeudas(menuId);
+  setSyncBadge('ok');
+}
+
+// Push de eliminación: marca la fila como deleted en servidor ANTES de borrarla localmente.
+async function pushSharedDeudasDelete(menuId, deuda) {
+  const menu = getSharedDeudasMenu(menuId);
+  if (!menu?.sheetName || !getGasUrl()) return;
+  setSyncBadge('saving');
+  await callGas('pushJsonRows', {
+    sheetName: menu.sheetName,
+    rows: [{
+      id:        String(deuda.id),
+      json:      JSON.stringify(deuda),
+      updatedAt: new Date().toISOString(),
+      deleted:   1
+    }]
+  });
   setSyncBadge('ok');
 }
 

@@ -68,6 +68,11 @@ function _progressBlock(d) {
 function renderDeudas(sourceId) {
   if (sourceId !== undefined) _deudaSource = sourceId;
 
+  // Al abrir una vista compartida: pull inmediato del servidor
+  if (sourceId !== undefined && sourceId !== 'local' && typeof syncSharedDeudas === 'function') {
+    syncSharedDeudas(sourceId).catch(() => {});
+  }
+
   let list = [..._getDeudas()];
 
   const s  = (document.getElementById('d-search')?.value ?? '').toLowerCase();
@@ -264,8 +269,14 @@ function saveDeuda() {
 function confirmDeleteDeuda() {
   if (!_editingDeudaId) return;
   const id = _editingDeudaId;
-  showConfirm('¿Eliminar esta deuda y todos sus pagos?', () => {
-    if (_deudaSource === 'local') markDeletedForSync('deudas', id);
+  showConfirm('¿Eliminar esta deuda y todos sus pagos?', async () => {
+    if (_deudaSource === 'local') {
+      markDeletedForSync('deudas', id);
+    } else {
+      // Marcar como deleted en servidor ANTES de borrar localmente
+      const deuda = _getDeudas().find(x => x.id === id);
+      if (deuda) await pushSharedDeudasDelete(_deudaSource, deuda).catch(() => {});
+    }
     _mutateDeudas(arr => {
       const idx = arr.findIndex(x => x.id === id);
       if (idx >= 0) arr.splice(idx, 1);
