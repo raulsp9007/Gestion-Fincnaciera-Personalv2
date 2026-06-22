@@ -103,14 +103,21 @@ function _setConfig({ key, value }) {
     sheet.appendRow(['key', 'value']);
   }
 
-  const data = sheet.getDataRange().getValues();
+  const data     = sheet.getDataRange().getValues();
+  const matchRows = [];
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === key) {
-      sheet.getRange(i + 1, 2).setValue(value);
-      return { ok: true };
+    if (String(data[i][0]).trim() === key) matchRows.push(i + 1); // 1-based
+  }
+
+  if (matchRows.length === 0) {
+    sheet.appendRow([key, value]);
+  } else {
+    // Actualiza la primera coincidencia; elimina duplicados de abajo hacia arriba
+    sheet.getRange(matchRows[0], 2).setValue(value);
+    for (let i = matchRows.length - 1; i >= 1; i--) {
+      sheet.deleteRow(matchRows[i]);
     }
   }
-  sheet.appendRow([key, value]);
   return { ok: true };
 }
 
