@@ -480,6 +480,21 @@ function openDeudasImportPicker() {
   inp.click();
 }
 
+function exportDeudasLocal() {
+  const deudas = loadData().deudas ?? [];
+  const json   = JSON.stringify({ deudas, exportedAt: new Date().toISOString() }, null, 2);
+  const blob   = new Blob([json], { type: 'application/json' });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement('a');
+  a.href       = url;
+  a.download   = `deudas-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Deudas exportadas ✓');
+}
+
 function handleDeudasImportFile(input) {
   const file = input.files?.[0];
   if (!file) return;

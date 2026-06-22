@@ -54,14 +54,25 @@ function _buildSidebar() {
 }
 
 function _buildBottomNav() {
-  const initial = (currentUser?.name ?? '?').charAt(0).toUpperCase();
-  const menus   = getCustomMenus().slice(0, 2); // max 2 custom menus in bottom nav
+  const initial     = (currentUser?.name ?? '?').charAt(0).toUpperCase();
+  const menus       = getCustomMenus();
+  const sharedDe    = getSharedDeudasMenus();
 
   document.getElementById('bottom-nav').innerHTML = `
     <a class="${_currentView === 'inicio' ? 'active' : ''}" onclick="switchView('inicio')">
       <span class="bn-ico">🏠</span>
       <span>Inicio</span>
     </a>
+    <a class="${_currentView === 'deudas' ? 'active' : ''}" onclick="switchView('deudas')">
+      <span class="bn-ico">💳</span>
+      <span>Deudas</span>
+    </a>
+    ${sharedDe.map(m => `
+      <a class="${_currentView === 'sdeudas-' + m.id ? 'active' : ''}"
+         onclick="switchView('sdeudas-${m.id}')">
+        <span class="bn-ico">💳</span>
+        <span>${esc(m.name.slice(0, 8))}</span>
+      </a>`).join('')}
     ${menus.map(m => `
       <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
          onclick="switchView('menu-${m.id}')">

@@ -164,6 +164,7 @@
             <option value="pagado">✅ Pagado</option>
           </select>
           <button class="btn btn-ghost btn-sm" onclick="openDeudasImportPicker()">📥 Importar</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportDeudasLocal()">📤 Exportar</button>
           <button class="btn btn-primary btn-sm" onclick="openDeudaModal()">+ Nueva deuda</button>
         </div>
         <input type="file" id="deudas-import-file" accept=".json" style="display:none"
@@ -333,7 +334,7 @@
     <div id="tx-attach-list" style="margin-bottom:8px"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
       <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-        📁 Guardar en dispositivo
+        📁 Cargar desde dispositivo
         <input type="file" id="tx-attach-file" multiple accept="*/*" style="display:none"
                onchange="handleAttachFile(this)">
       </label>
