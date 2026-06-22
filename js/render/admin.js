@@ -4,6 +4,7 @@
 function openAdminPanel() {
   renderAdminUsers();
   renderGasSection();
+  renderAutosaveSection();
   document.getElementById('admin-modal').classList.add('open');
 }
 

@@ -207,6 +207,7 @@ function startApp() {
   try { processRecurringTxs(); } catch (e) { console.error('processRecurringTxs:', e); }
   renderInicio();
   startSync();
+  startAutosave();
 
   document.getElementById('app').classList.remove('hidden');
 }

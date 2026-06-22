@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'cashmap-v2-21';
+const CACHE_NAME = 'cashmap-v2-22';
 
 const PRECACHE = [
   './',
@@ -19,6 +19,7 @@ const PRECACHE = [
   './js/render/deudas.js',
   './js/render/custom-menu.js',
   './js/render/admin.js',
+  './js/autosave.js',
   './js/main.js'
 ];
 
