@@ -136,8 +136,12 @@ async function testGasUrl() {
   setGasUrl(url);
   _setGasStatus('testing');
   try {
-    const r = await testGasConnection();
-    _setGasStatus('ok', `Conectado ✓ (v${r.version ?? '?'})`);
+    await testGasConnection();
+    _setGasStatus('ok', 'Conectado ✓ — sincronizando…');
+    // Pull config y menús compartidos inmediatamente tras conectar
+    await connectAndSync();
+    _setGasStatus('ok', 'Conectado ✓');
+    buildNav();
   } catch (e) {
     _setGasStatus('error', 'Error: ' + e.message);
   }
