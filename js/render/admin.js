@@ -174,12 +174,14 @@ function handleImportFile(input) {
     const txCount     = (raw.txs ?? raw.inicio ?? []).length;
     const menuCount   = (raw.customMenus ?? []).length;
     const homeTxCount = (raw.homeTxs ?? []).length;
+    const deudaCount  = (raw.deudas ?? []).length;
 
     let msg = '¿Importar datos?';
     const lines = [];
     if (txCount)     lines.push(`${txCount} movimientos de inicio`);
     if (menuCount)   lines.push(`${menuCount} menús personalizados`);
     if (homeTxCount) lines.push(`${homeTxCount} movimientos de hogar`);
+    if (deudaCount)  lines.push(`${deudaCount} deudas`);
     if (!lines.length) { showToast('Sin datos que importar', 'var(--yellow)'); return; }
     msg += '\n• ' + lines.join('\n• ');
 
@@ -188,7 +190,11 @@ function handleImportFile(input) {
         const stats = importV1Data(raw);
         buildNav();
         renderInicio();
-        showToast(`Importado: ${stats.txs} mov, ${stats.menus} menús (${stats.menuTxs} registros)`);
+        const toastParts = [];
+        if (stats.txs)    toastParts.push(`${stats.txs} mov`);
+        if (stats.menus)  toastParts.push(`${stats.menus} menús (${stats.menuTxs} reg)`);
+        if (stats.deudas) toastParts.push(`${stats.deudas} deudas`);
+        showToast('Importado: ' + toastParts.join(', '));
       } catch (err) {
         showToast('Error: ' + err.message, 'var(--red)');
       }

@@ -256,7 +256,7 @@ function importV1Data(raw) {
   }
 
   // ── Deudas (v1) ──────────────────────────────────────
-  if (isV1 && raw.deudas?.length) {
+  if (raw.deudas?.length) {
     if (!d.deudas) d.deudas = [];
     let nextDeudaId = d.deudas.length ? Math.max(...d.deudas.map(x => x.id)) + 1 : 1;
     for (const dv1 of raw.deudas) {
@@ -278,7 +278,7 @@ function importV1Data(raw) {
         })),
         updatedAt:   dv1.updatedAt ?? new Date().toISOString()
       });
-      stats.txs++;
+      stats.deudas = (stats.deudas ?? 0) + 1;
     }
   }
 
