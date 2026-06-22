@@ -128,18 +128,22 @@ async function submitSetup() {
   startApp();
 }
 
-// ── Unirse con URL del servidor ───────────────────────────
-function showJoinPanel() {
-  const p = document.getElementById('join-panel');
+// ── Unirse / sincronizar usuarios con servidor ────────────
+// ctx: 'setup' (primera vez) | 'login' (ya tiene usuarios locales)
+function showJoinPanel(ctx = 'setup') {
+  const panelId = ctx === 'login' ? 'join-panel-login' : 'join-panel';
+  const p = document.getElementById(panelId);
   p.style.display = p.style.display === 'none' ? '' : 'none';
 }
 
-async function submitJoin() {
-  const url   = document.getElementById('join-url').value.trim();
-  const errEl = document.getElementById('join-error');
+async function submitJoin(ctx = 'setup') {
+  const urlId  = ctx === 'login' ? 'join-url-login'   : 'join-url';
+  const errId  = ctx === 'login' ? 'join-error-login' : 'join-error';
+  const url    = document.getElementById(urlId).value.trim();
+  const errEl  = document.getElementById(errId);
   errEl.textContent = '';
 
-  if (!url) { errEl.textContent = 'La URL es obligatoria.'; return; }
+  if (!url) { errEl.style.color = 'var(--red)'; errEl.textContent = 'La URL es obligatoria.'; return; }
 
   errEl.style.color = 'var(--text2)';
   errEl.textContent = 'Conectando al servidor…';
