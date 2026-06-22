@@ -54,6 +54,8 @@ async function connectAndSync() {
     setSyncBadge('ok');
   } catch (e) {
     setSyncBadge('error');
+    console.error('[connectAndSync]', e.message, e);
+    showToast('Error sync: ' + e.message, 'var(--red)');
   }
 }
 
@@ -160,6 +162,7 @@ async function syncAllSharedMenus() {
 }
 
 async function _syncOneMenu(menu) {
+  if (!menu.sheetName) return;
   try {
     const r = await callGas('pullRows', { sheetName: menu.sheetName, since: menu.lastPulledAt });
     if (!r.rows?.length) return;
