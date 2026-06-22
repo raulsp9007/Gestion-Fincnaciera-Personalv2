@@ -24,8 +24,9 @@ async function connectWithGasIdentity(url, username, pin) {
   // 1. Descargar lista de usuarios del servidor
   const users = await pullUsersFromGas(url);
 
-  // 2. Buscar usuario por nombre (case-sensitive, igual que sharedWith)
-  const serverUser = users.find(u => u.name === username);
+  // 2. Buscar usuario por nombre (case-insensitive)
+  const usernameLower = username.toLowerCase();
+  const serverUser = users.find(u => u.name.toLowerCase() === usernameLower);
   if (!serverUser) throw new Error(`Usuario "${username}" no existe en el servidor`);
 
   // 3. Validar PIN
