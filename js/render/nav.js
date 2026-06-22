@@ -31,10 +31,11 @@ function _buildSidebar() {
                           onmouseenter="this.style.opacity='1'"
                           onmouseleave="this.style.opacity='0'">🗑️</span>` : ''}
       </a>`).join('')}
-    ${isAdmin ? `
+    ${isAdmin || currentUser?.role === 'editor' ? `
     <a onclick="openNewMenuModal()">
       <span class="ico">➕</span> Nuevo menú
-    </a>
+    </a>` : ''}
+    ${isAdmin ? `
     <a onclick="openAdminPanel()">
       <span class="ico">⚙️</span> Admin
     </a>` : ''}
