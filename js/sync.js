@@ -31,6 +31,7 @@ function _startPoll() {
   _syncInterval = setInterval(() => {
     if (_hasSharedMenus()) syncAllSharedMenus();
     syncPrivateData().catch(() => {});
+    syncSharedDeudas().catch(() => {});
   }, ms);
 }
 
@@ -46,6 +47,7 @@ async function connectAndSync() {
     await _pullSharedConfig();
     await syncAllSharedMenus();
     await syncPrivateData();
+    await syncSharedDeudas();
     setSyncBadge('ok');
   } catch (e) {
     setSyncBadge('error');
@@ -100,6 +102,44 @@ async function _pullSharedConfig() {
       return isNaN(num) || !removeIds.has(num);
     });
     changed = true;
+  }
+
+  // ── Shared Deudas ─────────────────────────────────────
+  const rawDeudas = r.config?.shared_deudas;
+  if (rawDeudas) {
+    let sdList;
+    try { sdList = JSON.parse(rawDeudas); if (!Array.isArray(sdList)) sdList = [sdList]; }
+    catch { sdList = []; }
+
+    if (!d.sharedDeudasMenus) d.sharedDeudasMenus = [];
+
+    for (const sd of sdList) {
+      const access = sd.sharedWith?.find(u => u.name?.toLowerCase() === userName?.toLowerCase());
+      if (!access && !isAdmin) continue;
+      const existing = d.sharedDeudasMenus.find(m => m.sheetName === sd.sheetName);
+      if (!existing) {
+        const id = d.sharedDeudasMenus.length ? Math.max(...d.sharedDeudasMenus.map(m => m.id)) + 1 : 1;
+        d.sharedDeudasMenus.push({
+          id, name: sd.name, sheetName: sd.sheetName,
+          myRole: access?.role ?? 'admin', sharedWith: sd.sharedWith ?? [],
+          data: [], lastPulledAt: null
+        });
+        d.navOrder.push('sdeudas-' + id);
+        changed = true;
+      }
+    }
+
+    const remoteSDSheets = new Set(sdList.map(sd => sd.sheetName));
+    const toRemoveSD = d.sharedDeudasMenus.filter(m => m.sheetName && !remoteSDSheets.has(m.sheetName));
+    if (toRemoveSD.length) {
+      const removeIds = new Set(toRemoveSD.map(m => m.id));
+      d.sharedDeudasMenus = d.sharedDeudasMenus.filter(m => !removeIds.has(m.id));
+      d.navOrder = d.navOrder.filter(k => {
+        const num = parseInt(k.replace('sdeudas-', ''), 10);
+        return isNaN(num) || !removeIds.has(num);
+      });
+      changed = true;
+    }
   }
 
   if (changed) { saveData(); buildNav(); }
@@ -177,6 +217,51 @@ async function forceSyncNow() {
   }
 }
 
+// ── Shared Deudas sync ────────────────────────────────────
+async function syncSharedDeudas() {
+  const menus = getSharedDeudasMenus();
+  if (!menus.length || !getGasUrl()) return;
+  for (const menu of menus) {
+    if (!menu.sheetName) continue;
+    try {
+      const r = await callGas('pullJsonRows', { sheetName: menu.sheetName, since: menu.lastPulledAt });
+      if (!r.rows?.length) continue;
+      const d = loadData();
+      const m = (d.sharedDeudasMenus ?? []).find(m => m.id === menu.id);
+      if (!m) continue;
+      const changed = _mergeSharedDeudasRows(m, r.rows);
+      if (changed) {
+        m.lastPulledAt = r.pulledAt;
+        saveData();
+        if (typeof _currentView !== 'undefined' && _currentView === 'sdeudas-' + menu.id) {
+          renderDeudas(menu.id);
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+}
+
+async function pushSharedDeudas(menuId) {
+  const menu = getSharedDeudasMenu(menuId);
+  if (!menu?.sheetName || !getGasUrl()) return;
+  setSyncBadge('saving');
+  const rows = menu.data.map(r => ({
+    id:        String(r.id),
+    json:      JSON.stringify(r),
+    updatedAt: r.updatedAt ?? new Date().toISOString(),
+    deleted:   0
+  }));
+  if (rows.length) await callGas('pushJsonRows', { sheetName: menu.sheetName, rows });
+  setSyncBadge('ok');
+}
+
+async function pushSharedDeudasConfig() {
+  const list = getSharedDeudasMenus()
+    .filter(m => m.sheetName)
+    .map(m => ({ sheetName: m.sheetName, name: m.name, sharedWith: m.sharedWith ?? [] }));
+  await callGas('setConfig', { key: 'shared_deudas', value: JSON.stringify(list) });
+}
+
 // ── Private data sync (inicio + deudas por usuario) ──────
 let _privateSyncing = false;
 
@@ -228,6 +313,21 @@ async function _syncPrivateSheet(sheetName, dataKey) {
     if (dataKey === 'inicio' && typeof renderInicio === 'function') renderInicio();
     if (dataKey === 'deudas' && typeof renderDeudas === 'function') renderDeudas();
   }
+}
+
+function _mergeSharedDeudasRows(menu, remoteRows) {
+  const map = new Map(menu.data.map(r => [String(r.id), r]));
+  let changed = false;
+  for (const row of remoteRows) {
+    const remId = String(row.id);
+    if (row.deleted) { if (map.has(remId)) { map.delete(remId); changed = true; } continue; }
+    if (!row.parsed) continue;
+    const existing = map.get(remId);
+    if (!existing) { map.set(remId, row.parsed); changed = true; }
+    else if ((row.updatedAt ?? '') > (existing.updatedAt ?? '')) { map.set(remId, row.parsed); changed = true; }
+  }
+  if (changed) menu.data = [...map.values()];
+  return changed;
 }
 
 function _mergePrivateRows(data, dataKey, local, remoteRows) {

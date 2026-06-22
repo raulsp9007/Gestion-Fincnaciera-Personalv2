@@ -1,5 +1,34 @@
 'use strict';
 
+// ── Fuente activa de deudas ───────────────────────────────
+// 'local' = deudas personales | number = id de sharedDeudasMenu
+let _deudaSource = 'local';
+
+function _getDeudas() {
+  if (_deudaSource === 'local') return loadData().deudas ?? [];
+  return getSharedDeudasMenu(_deudaSource)?.data ?? [];
+}
+
+function _mutateDeudas(fn) {
+  const d = loadData();
+  if (_deudaSource === 'local') {
+    if (!d.deudas) d.deudas = [];
+    fn(d.deudas);
+  } else {
+    const m = (d.sharedDeudasMenus ?? []).find(m => m.id === _deudaSource);
+    if (m) fn(m.data);
+  }
+  saveData();
+}
+
+function _afterDeudaMutation() {
+  if (_deudaSource === 'local') {
+    syncPrivateData().catch(() => {});
+  } else {
+    pushSharedDeudas(_deudaSource).catch(() => {});
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────
 function _fmtDeuda(n, curr) {
   const formatted = new Intl.NumberFormat('es-ES', {
@@ -36,8 +65,10 @@ function _progressBlock(d) {
 }
 
 // ── Main render ───────────────────────────────────────────
-function renderDeudas() {
-  let list = [...(loadData().deudas ?? [])];
+function renderDeudas(sourceId) {
+  if (sourceId !== undefined) _deudaSource = sourceId;
+
+  let list = [..._getDeudas()];
 
   const s  = (document.getElementById('d-search')?.value ?? '').toLowerCase();
   const tp = document.getElementById('d-type')?.value ?? '';
@@ -110,7 +141,7 @@ function _toggleDeudaHist(deudaId, btn) {
   if (existing) { existing.remove(); btn.textContent = '▶'; return; }
 
   btn.textContent = '▼';
-  const d        = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  const d        = _getDeudas().find(x => x.id === deudaId);
   if (!d) return;
   const curr     = d.currency ?? '$';
   const sign     = d.type === 'por_cobrar' ? '+' : '-';
@@ -141,7 +172,7 @@ function openDeudaModal(id) {
   const delBtn    = document.getElementById('deuda-del-btn');
 
   if (id) {
-    const d = (loadData().deudas ?? []).find(x => x.id === id);
+    const d = _getDeudas().find(x => x.id === id);
     if (!d) return;
     document.getElementById('deuda-modal-title').textContent = 'Editar deuda';
     document.getElementById('deuda-id').value          = d.id;
@@ -210,23 +241,20 @@ function saveDeuda() {
     showToast('Completa fecha, monto y persona', 'var(--red)'); return;
   }
 
-  const d = loadData();
-  if (!d.deudas) d.deudas = [];
-
-  if (id) {
-    const idx = d.deudas.findIndex(x => x.id === parseInt(id, 10));
-    if (idx >= 0) {
-      d.deudas[idx] = { ...d.deudas[idx], date, amount, persona, description: desc, type, status, notes, currency, updatedAt: new Date().toISOString() };
+  const now = new Date().toISOString();
+  _mutateDeudas(arr => {
+    if (id) {
+      const idx = arr.findIndex(x => x.id === parseInt(id, 10));
+      if (idx >= 0) arr[idx] = { ...arr[idx], date, amount, persona, description: desc, type, status, notes, currency, updatedAt: now };
+    } else {
+      const nextId = arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
+      arr.push({ id: nextId, date, amount, persona, description: desc, type, status, notes, currency, paid: 0, payments: [], updatedAt: now });
     }
-  } else {
-    const nextId = d.deudas.length ? Math.max(...d.deudas.map(x => x.id)) + 1 : 1;
-    d.deudas.push({ id: nextId, date, amount, persona, description: desc, type, status, notes, currency, paid: 0, payments: [], updatedAt: new Date().toISOString() });
-  }
+  });
 
-  saveData();
   closeDeudaModal();
   renderDeudas();
-  syncPrivateData().catch(() => {});
+  _afterDeudaMutation();
   showToast(id ? 'Deuda actualizada' : 'Deuda creada');
 }
 
@@ -234,25 +262,27 @@ function confirmDeleteDeuda() {
   if (!_editingDeudaId) return;
   const id = _editingDeudaId;
   showConfirm('¿Eliminar esta deuda y todos sus pagos?', () => {
-    markDeletedForSync('deudas', id);
-    const d = loadData();
-    d.deudas = (d.deudas ?? []).filter(x => x.id !== id);
-    saveData();
+    if (_deudaSource === 'local') markDeletedForSync('deudas', id);
+    _mutateDeudas(arr => {
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx >= 0) arr.splice(idx, 1);
+    });
     closeDeudaModal();
     renderDeudas();
-    syncPrivateData().catch(() => {});
+    _afterDeudaMutation();
     showToast('Deuda eliminada', 'var(--red)');
   }, { icon: '💳', okLabel: 'Eliminar' });
 }
 
 function toggleDeudaStatus(id) {
-  const d = loadData();
-  const deuda = (d.deudas ?? []).find(x => x.id === id);
-  if (!deuda) return;
-  deuda.status     = deuda.status === 'pagado' ? 'pendiente' : 'pagado';
-  deuda.updatedAt  = new Date().toISOString();
-  saveData();
+  _mutateDeudas(arr => {
+    const deuda = arr.find(x => x.id === id);
+    if (!deuda) return;
+    deuda.status    = deuda.status === 'pagado' ? 'pendiente' : 'pagado';
+    deuda.updatedAt = new Date().toISOString();
+  });
   renderDeudas();
+  _afterDeudaMutation();
 }
 
 // ── recalcDeudaPaid ───────────────────────────────────────
@@ -273,7 +303,7 @@ function _recalcDeudaPaid(d) {
 
 // ── PAGO MODAL ────────────────────────────────────────────
 function openPagoModal(deudaId) {
-  const d = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  const d = _getDeudas().find(x => x.id === deudaId);
   if (!d) return;
 
   const curr      = d.currency ?? '$';
@@ -338,27 +368,27 @@ function savePago() {
     showToast('Completa fecha y monto', 'var(--red)'); return;
   }
 
-  const data = loadData();
-  const d    = (data.deudas ?? []).find(x => x.id === deudaId);
-  if (!d) return;
-  if (!d.payments) d.payments = [];
+  _mutateDeudas(arr => {
+    const d = arr.find(x => x.id === deudaId);
+    if (!d) return;
+    if (!d.payments) d.payments = [];
+    if (editIdx >= 0 && editIdx < d.payments.length) {
+      d.payments[editIdx] = { datetime, amount, notes };
+    } else {
+      d.payments.push({ datetime, amount, notes });
+    }
+    _recalcDeudaPaid(d);
+    d.updatedAt = new Date().toISOString();
+  });
 
-  if (editIdx >= 0 && editIdx < d.payments.length) {
-    d.payments[editIdx] = { datetime, amount, notes };
-  } else {
-    d.payments.push({ datetime, amount, notes });
-  }
-
-  _recalcDeudaPaid(d);
-  d.updatedAt = new Date().toISOString();
-  saveData();
   closePagoModal();
   renderDeudas();
+  _afterDeudaMutation();
   showToast(editIdx >= 0 ? 'Pago actualizado' : 'Pago registrado', 'var(--green)');
 }
 
 function renderPagoHistory(deudaId) {
-  const d = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  const d = _getDeudas().find(x => x.id === deudaId);
   if (!d) return;
 
   const curr    = d.currency ?? '$';
@@ -382,7 +412,7 @@ function renderPagoHistory(deudaId) {
 }
 
 function editPagoItem(deudaId, pIdx) {
-  const d = (loadData().deudas ?? []).find(x => x.id === deudaId);
+  const d = _getDeudas().find(x => x.id === deudaId);
   if (!d || !d.payments[pIdx]) return;
   const p = d.payments[pIdx];
 
@@ -410,7 +440,7 @@ function cancelEditPago(silent) {
 
   if (!silent) {
     const deudaId = parseInt(document.getElementById('pago-deuda-id').value, 10);
-    const d       = (loadData().deudas ?? []).find(x => x.id === deudaId);
+    const d       = _getDeudas().find(x => x.id === deudaId);
     if (d) {
       const remaining = deudaRemaining(d);
       const now       = new Date();
@@ -423,19 +453,22 @@ function cancelEditPago(silent) {
 }
 
 function deletePagoItem(deudaId, pIdx) {
-  const data = loadData();
-  const d    = (data.deudas ?? []).find(x => x.id === deudaId);
+  const d = _getDeudas().find(x => x.id === deudaId);
   if (!d || !d.payments[pIdx]) return;
   const p = d.payments[pIdx];
   showConfirm(`¿Eliminar pago de ${_fmtDeuda(p.amount, d.currency ?? '$')}?`, () => {
-    d.payments.splice(pIdx, 1);
-    _recalcDeudaPaid(d);
-    d.updatedAt = new Date().toISOString();
+    _mutateDeudas(arr => {
+      const deuda = arr.find(x => x.id === deudaId);
+      if (!deuda) return;
+      deuda.payments.splice(pIdx, 1);
+      _recalcDeudaPaid(deuda);
+      deuda.updatedAt = new Date().toISOString();
+    });
     const editIdx = parseInt(document.getElementById('pago-edit-idx').value, 10);
     if (editIdx === pIdx) cancelEditPago(true);
-    saveData();
     openPagoModal(deudaId);
     renderDeudas();
+    _afterDeudaMutation();
     showToast('Pago eliminado', 'var(--red)');
   }, { icon: '💸', okLabel: 'Eliminar pago' });
 }
@@ -464,34 +497,32 @@ function handleDeudasImportFile(input) {
     showConfirm(
       `¿Importar ${src.length} deuda(s) desde "${file.name}"?\nSe agregarán a las existentes sin eliminar nada.`,
       () => {
-        const d = loadData();
-        if (!d.deudas) d.deudas = [];
-        let nextId = d.deudas.length ? Math.max(...d.deudas.map(x => x.id)) + 1 : 1;
-        let count  = 0;
-        for (const dv of src) {
-          d.deudas.push({
-            id:          nextId++,
-            date:        String(dv.date || '').slice(0, 10),
-            amount:      Number(dv.amount) || 0,
-            persona:     String(dv.persona || ''),
-            description: String(dv.description || ''),
-            type:        dv.type === 'por_pagar' ? 'por_pagar' : 'por_cobrar',
-            status:      dv.status ?? 'pendiente',
-            notes:       String(dv.notes || ''),
-            currency:    String(dv.currency || '$'),
-            paid:        Number(dv.paid) || 0,
-            payments:    (dv.payments ?? []).map(p => ({
-              datetime: p.datetime ?? p.date ?? '',
-              amount:   Number(p.amount) || 0,
-              notes:    String(p.notes || '')
-            })),
-            updatedAt: dv.updatedAt ?? new Date().toISOString()
-          });
-          count++;
-        }
-        saveData();
+        _mutateDeudas(arr => {
+          let nextId = arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
+          for (const dv of src) {
+            arr.push({
+              id:          nextId++,
+              date:        String(dv.date || '').slice(0, 10),
+              amount:      Number(dv.amount) || 0,
+              persona:     String(dv.persona || ''),
+              description: String(dv.description || ''),
+              type:        dv.type === 'por_pagar' ? 'por_pagar' : 'por_cobrar',
+              status:      dv.status ?? 'pendiente',
+              notes:       String(dv.notes || ''),
+              currency:    String(dv.currency || '$'),
+              paid:        Number(dv.paid) || 0,
+              payments:    (dv.payments ?? []).map(p => ({
+                datetime: p.datetime ?? p.date ?? '',
+                amount:   Number(p.amount) || 0,
+                notes:    String(p.notes || '')
+              })),
+              updatedAt: dv.updatedAt ?? new Date().toISOString()
+            });
+          }
+        });
         renderDeudas();
-        showToast(`Importadas ${count} deuda(s) ✓`);
+        _afterDeudaMutation();
+        showToast(`Importadas ${src.length} deuda(s) ✓`);
       },
       { icon: '📥', okLabel: 'Importar' }
     );

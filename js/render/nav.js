@@ -19,6 +19,13 @@ function _buildSidebar() {
     <a class="${_currentView === 'deudas' ? 'active' : ''}" onclick="switchView('deudas')">
       <span class="ico">💳</span> Deudas
     </a>
+    ${getSharedDeudasMenus().map(m => `
+      <a class="${_currentView === 'sdeudas-' + m.id ? 'active' : ''}"
+         onclick="switchView('sdeudas-${m.id}')">
+        <span class="ico">💳</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+        <span title="Compartido" style="font-size:.6rem;padding:1px 6px;border-radius:99px;background:#22c55e22;color:#22c55e;font-weight:700;flex-shrink:0;line-height:1.6">Sync</span>
+      </a>`).join('')}
     ${menus.map(m => `
       <a class="${_currentView === 'menu-' + m.id ? 'active' : ''}"
          onclick="switchView('menu-${m.id}')">
@@ -74,10 +81,13 @@ function switchView(viewId) {
   if (viewId.startsWith('menu-')) {
     document.getElementById('view-custom').classList.add('active');
     renderCustomMenu(parseInt(viewId.slice(5), 10));
+  } else if (viewId.startsWith('sdeudas-')) {
+    document.getElementById('view-deudas').classList.add('active');
+    renderDeudas(parseInt(viewId.slice(8), 10));
   } else {
     document.getElementById('view-' + viewId)?.classList.add('active');
     if (viewId === 'inicio')  renderInicio();
-    if (viewId === 'deudas')  renderDeudas();
+    if (viewId === 'deudas')  { renderDeudas('local'); }
   }
 
   _currentView = viewId;
@@ -104,6 +114,10 @@ function _buildGasIdentityNav() {
 function _viewTitle(viewId) {
   if (viewId === 'inicio')  return 'Inicio';
   if (viewId === 'deudas')  return '💳 Deudas';
+  if (viewId.startsWith('sdeudas-')) {
+    const m = getSharedDeudasMenu(parseInt(viewId.slice(8), 10));
+    return m ? `💳 ${m.name}` : 'Deudas';
+  }
   if (viewId.startsWith('menu-')) {
     const m = getCustomMenu(parseInt(viewId.slice(5), 10));
     return m ? `${m.icon ?? '📋'} ${m.name}` : 'Menú';

@@ -15,14 +15,15 @@ const SAVE_DEBOUNCE            = 0;       // sin debounce — push inmediato par
 
 // ── Datos por defecto ─────────────────────────────────────
 const DEFAULT_DATA = {
-  version:     2,
-  inicio:      [],
-  deudas:      [],
-  customMenus: [],
-  globalCats:  { inc: {}, exp: {} },
-  budgets:     {},
-  navOrder:    ['inicio'],
-  config:      {}
+  version:           2,
+  inicio:            [],
+  deudas:            [],
+  customMenus:       [],
+  sharedDeudasMenus: [],
+  globalCats:        { inc: {}, exp: {} },
+  budgets:           {},
+  navOrder:          ['inicio'],
+  config:            {}
 };
 
 // ── Categorías por defecto — importadas desde v1 live data ─

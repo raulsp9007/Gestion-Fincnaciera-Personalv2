@@ -189,6 +189,41 @@ function _gasRowToTx(row) {
   };
 }
 
+// ── Shared Deudas Menus ───────────────────────────────────
+function getSharedDeudasMenus() {
+  return loadData().sharedDeudasMenus ?? [];
+}
+
+function getSharedDeudasMenu(id) {
+  return getSharedDeudasMenus().find(m => m.id === id) ?? null;
+}
+
+function addSharedDeudasMenu(fields) {
+  const d = loadData();
+  if (!d.sharedDeudasMenus) d.sharedDeudasMenus = [];
+  const id = d.sharedDeudasMenus.length ? Math.max(...d.sharedDeudasMenus.map(m => m.id)) + 1 : 1;
+  const menu = { id, data: [], lastPulledAt: null, ...fields };
+  d.sharedDeudasMenus.push(menu);
+  d.navOrder.push('sdeudas-' + id);
+  saveData();
+  return menu;
+}
+
+function updateSharedDeudasMenu(id, fields) {
+  const d = loadData();
+  const m = (d.sharedDeudasMenus ?? []).find(m => m.id === id);
+  if (!m) return;
+  Object.assign(m, fields);
+  saveData();
+}
+
+function deleteSharedDeudasMenu(id) {
+  const d = loadData();
+  d.sharedDeudasMenus = (d.sharedDeudasMenus ?? []).filter(m => m.id !== id);
+  d.navOrder = d.navOrder.filter(k => k !== 'sdeudas-' + id);
+  saveData();
+}
+
 // ── Import from v1 / backup JSON ──────────────────────────
 function importV1Data(raw) {
   const isV1 = Array.isArray(raw.txs);

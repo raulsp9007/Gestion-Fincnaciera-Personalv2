@@ -5,6 +5,7 @@ function openAdminPanel() {
   renderAdminUsers();
   renderGasSection();
   renderAutosaveSection();
+  renderSharedDeudasAdmin();
   document.getElementById('admin-modal').classList.add('open');
   switchAdminTab('usuarios');
 }
@@ -188,6 +189,111 @@ async function manualPushUsers() {
   } catch (e) {
     showToast('Error al subir usuarios: ' + e.message, 'var(--red)');
   }
+}
+
+// ── Deudas compartidas (admin) ────────────────────────────
+function renderSharedDeudasAdmin() {
+  const el = document.getElementById('admin-shared-deudas-list');
+  if (!el) return;
+  const list = getSharedDeudasMenus();
+  if (!list.length) {
+    el.innerHTML = '<div class="empty" style="font-size:.8rem;color:var(--text2)">Sin deudas compartidas configuradas</div>';
+    return;
+  }
+  el.innerHTML = list.map(m => `
+    <div class="cat-row">
+      <span class="cat-row-label" style="font-weight:600">💳 ${esc(m.name)}</span>
+      <span style="font-size:.7rem;color:var(--text2)">${esc(m.sheetName ?? '')}</span>
+      <div class="cat-row-actions">
+        <button title="Compartir/Editar" onclick="openShareDeudasModal(${m.id})">✏️</button>
+        <button title="Eliminar" onclick="confirmDeleteSharedDeudas(${m.id})" style="color:var(--red)">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openShareDeudasModal(editId) {
+  const m = editId ? getSharedDeudasMenu(editId) : null;
+  document.getElementById('sdm-id').value    = editId ?? '';
+  document.getElementById('sdm-name').value  = m?.name ?? 'Deudas compartidas';
+  document.getElementById('sdm-sheet').value = m?.sheetName ?? '_shared_deudas';
+  document.getElementById('sdm-error').textContent = '';
+
+  const users = loadUsers().filter(u => u.id !== currentUser.id);
+  const shared = m?.sharedWith ?? [];
+  document.getElementById('sdm-users').innerHTML = users.map(u => {
+    const entry = shared.find(s => s.name === u.name);
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.85rem">
+      <input type="checkbox" value="${esc(u.name)}" ${entry ? 'checked' : ''}
+             onchange="_sdmUpdateRole(this)">
+      <span style="flex:1">${esc(u.name)}</span>
+      <select id="sdm-role-${esc(u.name)}" style="font-size:.75rem;padding:2px 6px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text)" ${!entry ? 'disabled' : ''}>
+        <option value="viewer" ${entry?.role === 'viewer' ? 'selected' : ''}>viewer</option>
+        <option value="editor" ${!entry || entry?.role === 'editor' ? 'selected' : ''}>editor</option>
+        <option value="admin"  ${entry?.role === 'admin'  ? 'selected' : ''}>admin</option>
+      </select>
+    </label>`;
+  }).join('') || '<div style="font-size:.8rem;color:var(--text2)">No hay otros usuarios</div>';
+
+  document.getElementById('share-deudas-modal').classList.add('open');
+}
+
+function _sdmUpdateRole(checkbox) {
+  const sel = document.getElementById('sdm-role-' + checkbox.value);
+  if (sel) sel.disabled = !checkbox.checked;
+}
+
+function closeShareDeudasModal() {
+  document.getElementById('share-deudas-modal').classList.remove('open');
+}
+
+async function saveSharedDeudasConfig() {
+  const editId    = document.getElementById('sdm-id').value;
+  const name      = document.getElementById('sdm-name').value.trim();
+  const sheetName = document.getElementById('sdm-sheet').value.trim();
+  const errEl     = document.getElementById('sdm-error');
+  errEl.textContent = '';
+
+  if (!name || !sheetName) { errEl.textContent = 'Nombre y hoja son obligatorios.'; return; }
+  if (!getGasUrl()) { errEl.textContent = 'Configura la URL del servidor primero.'; return; }
+
+  const checkboxes = document.getElementById('sdm-users').querySelectorAll('input[type=checkbox]:checked');
+  const sharedWith = [...checkboxes].map(cb => ({
+    name: cb.value,
+    role: document.getElementById('sdm-role-' + cb.value)?.value ?? 'editor'
+  }));
+
+  errEl.style.color = 'var(--text2)';
+  errEl.textContent = 'Guardando…';
+
+  try {
+    if (editId) {
+      updateSharedDeudasMenu(parseInt(editId, 10), { name, sheetName, sharedWith });
+    } else {
+      addSharedDeudasMenu({ name, sheetName, sharedWith });
+    }
+    await pushSharedDeudasConfig();
+    buildNav();
+    renderSharedDeudasAdmin();
+    closeShareDeudasModal();
+    showToast('Deudas compartidas guardadas ✓');
+  } catch (e) {
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function confirmDeleteSharedDeudas(id) {
+  const m = getSharedDeudasMenu(id);
+  if (!m) return;
+  showConfirm(`¿Dejar de compartir "${m.name}"? Se eliminará de los dispositivos conectados en la próxima sincronización.`, async () => {
+    deleteSharedDeudasMenu(id);
+    if (getGasUrl()) await pushSharedDeudasConfig().catch(() => {});
+    buildNav();
+    renderSharedDeudasAdmin();
+    if (typeof _currentView !== 'undefined' && _currentView === 'sdeudas-' + id) switchView('deudas');
+    showToast('Deudas descompartidas', 'var(--yellow)');
+  }, { icon: '💳', okLabel: 'Descompartir' });
 }
 
 // ── Exportar datos ───────────────────────────────────────
