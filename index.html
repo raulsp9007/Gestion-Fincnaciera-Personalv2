@@ -217,6 +217,15 @@
       <label>Notas <small style="color:var(--text2);font-weight:400">(opcional)</small></label>
       <input id="tx-notes" type="text" placeholder="Detalles adicionales" autocomplete="off">
     </div>
+    <div class="form-row">
+      <label>Recurrencia <small style="color:var(--text2);font-weight:400">(opcional)</small></label>
+      <select id="tx-recurring">
+        <option value="">Sin recurrencia</option>
+        <option value="semanal">↻ Semanal</option>
+        <option value="mensual">↻ Mensual</option>
+        <option value="anual">↻ Anual</option>
+      </select>
+    </div>
     <div class="login-error" id="tx-error"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost"    onclick="closeTxModal()">Cancelar</button>

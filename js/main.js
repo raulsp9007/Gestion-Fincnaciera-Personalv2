@@ -171,6 +171,7 @@ function startApp() {
 
   buildNav();
   switchView('inicio');
+  try { processRecurringTxs(); } catch (e) { console.error('processRecurringTxs:', e); }
   renderInicio();
   startSync();
 

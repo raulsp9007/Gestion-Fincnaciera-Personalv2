@@ -282,6 +282,60 @@ function importV1Data(raw) {
   return stats;
 }
 
+// ── Recurrencia ───────────────────────────────────────────
+function nextOccurrence(dateStr, period) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return null;
+  if (period === 'semanal')      d.setDate(d.getDate() + 7);
+  else if (period === 'mensual') d.setMonth(d.getMonth() + 1);
+  else if (period === 'anual')   d.setFullYear(d.getFullYear() + 1);
+  else return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function processRecurringTxs() {
+  const d     = loadData();
+  const today = new Date().toISOString().slice(0, 10);
+  const now   = new Date().toISOString();
+  let changed = false;
+
+  const _dedup = (arr, templateId, date, desc, amount, type) =>
+    arr.some(x => x.id !== templateId && x.date === date &&
+                  x.description === desc && x.amount === amount && x.type === type);
+
+  // Inicio txs
+  let nextTxId = d.inicio.length ? Math.max(...d.inicio.map(t => t.id)) + 1 : 1;
+  d.inicio.filter(t => t.recurring && t.recurringNext).forEach(t => {
+    while (t.recurringNext && t.recurringNext <= today) {
+      const due = t.recurringNext;
+      if (!_dedup(d.inicio, t.id, due, t.description, t.amount, t.type)) {
+        const { recurringNext: _rn, ...base } = t;
+        d.inicio.push({ ...base, id: nextTxId++, date: due, updatedAt: now });
+        changed = true;
+      }
+      t.recurringNext = nextOccurrence(due, t.recurring);
+    }
+  });
+
+  // Custom menu txs
+  for (const m of d.customMenus) {
+    m.data.filter(t => t.recurring && t.recurringNext).forEach(t => {
+      while (t.recurringNext && t.recurringNext <= today) {
+        const due = t.recurringNext;
+        if (!_dedup(m.data, t.id, due, t.description, t.amount, t.type)) {
+          const { recurringNext: _rn, ...base } = t;
+          m.data.push({ ...base, id: m.nextDataId++, date: due, updatedAt: now });
+          changed = true;
+        }
+        t.recurringNext = nextOccurrence(due, t.recurring);
+      }
+    });
+  }
+
+  if (changed) saveData();
+}
+
 // ── Import transactions into a specific menu ──────────────
 function importMenuTxs(menuId, rawTxs) {
   const d = loadData();

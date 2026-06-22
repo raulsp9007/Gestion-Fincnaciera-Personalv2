@@ -141,10 +141,15 @@ function _buildTxRow(tx, cats) {
   const sign   = tx.type === 'inc' ? '+' : '-';
   const col    = tx.type === 'inc' ? 'var(--green)' : 'var(--red)';
 
+  const recurLbl = { semanal: '↻ sem', mensual: '↻ mes', anual: '↻ año' }[tx.recurring] ?? '';
+
   return `<tr>
     <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}</td>
     <td>
-      <div style="font-weight:500">${esc(tx.description)}</div>
+      <div style="font-weight:500;display:flex;align-items:center;gap:5px">
+        ${esc(tx.description)}
+        ${recurLbl ? `<span style="font-size:.62rem;padding:1px 5px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:700;flex-shrink:0">${recurLbl}</span>` : ''}
+      </div>
       ${tx.notes ? `<div style="font-size:.72rem;color:var(--text2)">${esc(tx.notes)}</div>` : ''}
     </td>
     <td>
@@ -250,6 +255,7 @@ function openNewRecordModal() {
   document.getElementById('tx-amount').value          = '';
   document.getElementById('tx-desc').value            = '';
   document.getElementById('tx-notes').value           = '';
+  document.getElementById('tx-recurring').value       = '';
   document.getElementById('tx-error').textContent     = '';
   _setTxTypeUI('exp');
   _updateTxCatOptions();
@@ -267,6 +273,7 @@ function openEditTxModal(txId) {
   document.getElementById('tx-amount').value          = tx.amount;
   document.getElementById('tx-desc').value            = tx.description;
   document.getElementById('tx-notes').value           = tx.notes ?? '';
+  document.getElementById('tx-recurring').value       = tx.recurring || '';
   document.getElementById('tx-error').textContent     = '';
   _setTxTypeUI(tx.type);
   _updateTxCatOptions();                              // 3. populate
@@ -309,7 +316,10 @@ function saveTx() {
   if (!amount || amount <= 0){ errEl.textContent = 'Importe debe ser mayor que 0.'; return; }
   if (!desc)                 { errEl.textContent = 'Descripción obligatoria.'; return; }
 
-  const fields = { date, amount, description: desc, type: _txType, category: cat, notes };
+  const recurring     = document.getElementById('tx-recurring').value || false;
+  const recurringNext = recurring ? nextOccurrence(date, recurring) : undefined;
+  const fields = { date, amount, description: desc, type: _txType, category: cat, notes,
+                   recurring, recurringNext };
 
   if (_txContext.src === 'custom') {
     const mid = _txContext.menuId;

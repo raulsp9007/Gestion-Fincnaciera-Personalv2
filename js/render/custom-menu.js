@@ -124,10 +124,15 @@ function _menuTxRow(menu, tx, cats, curr) {
   const sign   = tx.type === 'inc' ? '+' : '-';
   const col    = tx.type === 'inc' ? 'var(--green)' : 'var(--red)';
 
+  const recurLbl = { semanal: '↻ sem', mensual: '↻ mes', anual: '↻ año' }[tx.recurring] ?? '';
+
   return `<tr>
     <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}</td>
     <td>
-      <div style="font-weight:500">${esc(tx.description)}</div>
+      <div style="font-weight:500;display:flex;align-items:center;gap:5px">
+        ${esc(tx.description)}
+        ${recurLbl ? `<span style="font-size:.62rem;padding:1px 5px;border-radius:99px;background:var(--acc)22;color:var(--acc);font-weight:700;flex-shrink:0">${recurLbl}</span>` : ''}
+      </div>
       ${tx.notes ? `<div style="font-size:.72rem;color:var(--text2)">${esc(tx.notes)}</div>` : ''}
     </td>
     <td>
@@ -158,6 +163,7 @@ function openEditMenuTxModal(menuId, txId) {
   document.getElementById('tx-amount').value          = tx.amount;
   document.getElementById('tx-desc').value            = tx.description;
   document.getElementById('tx-notes').value           = tx.notes ?? '';
+  document.getElementById('tx-recurring').value       = tx.recurring || '';
   document.getElementById('tx-error').textContent     = '';
   _setTxTypeUI(tx.type);
   _updateTxCatOptions();
