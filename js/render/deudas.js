@@ -89,10 +89,13 @@ function renderDeudas(sourceId) {
 
   document.getElementById('deudas-count').textContent = active.length + ' registro(s)';
 
+  const emptyMsg = _deudaSource !== 'local'
+    ? `Sin deudas compartidas — este pool empieza vacío.<br><small style="color:var(--text2)">Las deudas que añadas aquí se sincronizan con el servidor.</small>`
+    : 'Sin deudas activas';
   tbody.innerHTML = active.length
     ? active.map(_buildDeudaRow).join('')
     : `<tr><td colspan="7" class="empty" style="padding:20px">
-         Sin deudas activas
+         ${emptyMsg}
          <button class="btn btn-primary btn-sm" style="margin-left:10px" onclick="openDeudaModal()">+ Nueva deuda</button>
        </td></tr>`;
 
