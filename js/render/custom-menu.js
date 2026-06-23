@@ -22,8 +22,8 @@ function _getSections(menuId) {
   if (!_menuSections[menuId]) {
     try {
       const all = JSON.parse(localStorage.getItem('cashmap_v2_sections') ?? '{}');
-      _menuSections[menuId] = all[menuId] ?? { bar: true, cat: true, week: true };
-    } catch { _menuSections[menuId] = { bar: true, cat: true, week: true }; }
+      _menuSections[menuId] = all[menuId] ?? { bar: true, cat: true, week: true, budget: true };
+    } catch { _menuSections[menuId] = { bar: true, cat: true, week: true, budget: true }; }
   }
   return _menuSections[menuId];
 }
@@ -148,9 +148,10 @@ function renderCustomMenu(menuId) {
 
   // Hidden-section restore chips
   const hiddenChips = [
-    !sec.bar  && { key: 'bar',  label: 'Ingresos vs Gastos' },
-    !sec.cat  && { key: 'cat',  label: 'Gastos por categoría' },
-    !sec.week && { key: 'week', label: 'Gastos por semana' },
+    !sec.bar    && { key: 'bar',    label: 'Ingresos vs Gastos' },
+    !sec.cat    && { key: 'cat',    label: 'Gastos por categoría' },
+    !sec.week   && { key: 'week',   label: 'Gastos por semana' },
+    !sec.budget && { key: 'budget', label: 'Presupuesto mensual' },
   ].filter(Boolean);
   const hiddenBar = hiddenChips.length
     ? `<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -221,7 +222,7 @@ function renderCustomMenu(menuId) {
         <canvas id="cm-chart-week-${menuId}" height="160"></canvas>
       </div>` : ''}
     </div>
-    ${_menuBudgetSection(monthTxs, cats, curr, menuId)}
+    ${_menuBudgetSection(monthTxs, cats, curr, menuId, sec)}
     ${_menuTxTable(menu, monthTxs, cats, curr, fSearch, fType, fCat, fFrom, fTo)}
   `;
 
@@ -229,7 +230,8 @@ function renderCustomMenu(menuId) {
 }
 
 // ── Budget progress in menu view ──────────────────────────
-function _menuBudgetSection(monthTxs, cats, curr, menuId) {
+function _menuBudgetSection(monthTxs, cats, curr, menuId, sec) {
+  if (sec?.budget === false) return '';
   const budgets = getBudgets();
   const entries = Object.entries(budgets);
   if (!entries.length) return '';
@@ -267,7 +269,10 @@ function _menuBudgetSection(monthTxs, cats, curr, menuId) {
   return `<div class="chart-box" style="margin-bottom:16px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <h3 style="margin:0;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Presupuesto mensual</h3>
-      <button class="btn btn-ghost btn-sm" onclick="openBudgetsModal()">✏️ Editar</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="openBudgetsModal()">✏️ Editar</button>
+        <button class="btn-icon" title="Ocultar sección" onclick="toggleMenuSection(${menuId},'budget')" style="opacity:.6;font-size:.85rem">🙈</button>
+      </div>
     </div>
     ${bars}
   </div>`;
