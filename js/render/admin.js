@@ -518,11 +518,13 @@ function _renderBudgetsList() {
     return;
   }
 
-  // Gasto del mes actual en inicio
+  // Gasto del mes actual (todos los menús personalizados)
   const ym       = new Date().toISOString().slice(0, 7);
   const expByCat = {};
-  for (const tx of (d.inicio ?? []).filter(t => t.type === 'exp' && t.date.startsWith(ym))) {
-    expByCat[tx.category] = (expByCat[tx.category] ?? 0) + tx.amount;
+  for (const menu of (d.customMenus ?? [])) {
+    for (const tx of (menu.data ?? []).filter(t => t.type === 'exp' && t.date?.startsWith(ym))) {
+      expByCat[tx.category] = (expByCat[tx.category] ?? 0) + tx.amount;
+    }
   }
 
   el.innerHTML = entries.map(([key, cat]) => {

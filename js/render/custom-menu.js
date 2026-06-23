@@ -183,6 +183,8 @@ function renderCustomMenu(menuId) {
           ` : ''}
           <button class="btn btn-ghost btn-sm" onclick="openShareModal(${menuId})">🔗 ${menu.shared ? 'Acceso' : 'Compartir'}</button>
         ` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="generateMenuReport(${menuId})">📊 Reporte</button>
+        ${menu.shared ? `<button class="btn btn-ghost btn-sm" onclick="openMenuHistory(${menuId})">📋 Historial</button>` : ''}
       </div>
     </div>
     ${_menuMonthTabs(menuId, ym)}
@@ -219,10 +221,147 @@ function renderCustomMenu(menuId) {
         <canvas id="cm-chart-week-${menuId}" height="160"></canvas>
       </div>` : ''}
     </div>
+    ${_menuBudgetSection(monthTxs, cats, curr, menuId)}
     ${_menuTxTable(menu, monthTxs, cats, curr, fSearch, fType, fCat, fFrom, fTo)}
   `;
 
   _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec);
+}
+
+// ── Budget progress in menu view ──────────────────────────
+function _menuBudgetSection(monthTxs, cats, curr, menuId) {
+  const budgets = getBudgets();
+  const entries = Object.entries(budgets);
+  if (!entries.length) return '';
+
+  const expByCat = {};
+  for (const tx of monthTxs.filter(t => t.type === 'exp')) {
+    expByCat[tx.category] = (expByCat[tx.category] ?? 0) + tx.amount;
+  }
+
+  const bars = entries.map(([key, { monthly }]) => {
+    const cat       = cats.exp?.[key] ?? { label: key, color: '#64748b' };
+    const spent     = expByCat[key] ?? 0;
+    if (!spent && !monthly) return '';
+    const pct       = Math.min(100, Math.round((spent / monthly) * 100));
+    const col       = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
+    const remaining = Math.max(0, monthly - spent);
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:4px">
+        <span style="display:flex;align-items:center;gap:5px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${cat.color};display:inline-block;flex-shrink:0"></span>
+          ${esc(cat.label)}
+        </span>
+        <span style="color:${col};font-weight:600">${_fmtCurr(spent, curr)} / ${_fmtCurr(monthly, curr)}</span>
+      </div>
+      <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s"></div>
+      </div>
+      ${pct >= 100
+        ? `<div style="font-size:.68rem;color:var(--red);margin-top:2px">⚠ Excedido ${_fmtCurr(spent - monthly, curr)}</div>`
+        : `<div style="font-size:.68rem;color:var(--text2);margin-top:2px">${pct}% · Restante ${_fmtCurr(remaining, curr)}</div>`}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  if (!bars) return '';
+  return `<div class="chart-box" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text2)">Presupuesto mensual</h3>
+      <button class="btn btn-ghost btn-sm" onclick="openBudgetsModal()">✏️ Editar</button>
+    </div>
+    ${bars}
+  </div>`;
+}
+
+// ── PDF report ────────────────────────────────────────────
+function generateMenuReport(menuId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu) return;
+  const ym       = _menuMonth[menuId] || new Date().toISOString().slice(0, 7);
+  const allTxs   = getMenuTxs(menuId);
+  const monthTxs = allTxs.filter(t => t.date.startsWith(ym));
+  const cats     = loadData().globalCats;
+  const curr     = menu.currency || '€';
+  const budgets  = getBudgets();
+
+  const inc = monthTxs.filter(t => t.type === 'inc').reduce((s, t) => s + t.amount, 0);
+  const exp = monthTxs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
+  const bal = inc - exp;
+
+  const expByCat = {};
+  for (const tx of monthTxs.filter(t => t.type === 'exp')) {
+    expByCat[tx.category] = (expByCat[tx.category] ?? 0) + tx.amount;
+  }
+
+  const fmt = n => (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + curr;
+  const monthLabel = new Date(ym + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  const sorted = [...monthTxs].sort((a, b) => b.date.localeCompare(a.date));
+
+  const catRows = Object.entries(expByCat).map(([key, amount]) => {
+    const cat    = cats.exp?.[key] ?? { label: key, color: '#64748b' };
+    const budget = budgets[key]?.monthly;
+    const pct    = budget ? Math.min(100, Math.round(amount / budget * 100)) : null;
+    return `<tr>
+      <td style="padding:5px 10px">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${cat.color};margin-right:6px;vertical-align:middle"></span>${esc(cat.label)}
+      </td>
+      <td style="padding:5px 10px;text-align:right;font-weight:600;color:#ef4444">${fmt(amount)}</td>
+      <td style="padding:5px 10px;text-align:right;color:${pct != null && pct >= 100 ? '#ef4444' : '#64748b'}">${pct != null ? pct + '% de ' + fmt(budget) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const txRows = sorted.map(tx => {
+    const sign  = tx.type === 'inc' ? '+' : '-';
+    const color = tx.type === 'inc' ? '#22c55e' : '#ef4444';
+    const cat   = (tx.type === 'inc' ? cats.inc : cats.exp)?.[tx.category] ?? { label: tx.category ?? '' };
+    return `<tr>
+      <td style="padding:5px 10px;color:#64748b;font-size:.8rem;white-space:nowrap">${tx.date?.slice(0,10) ?? ''}</td>
+      <td style="padding:5px 10px">${esc(tx.description ?? '')}</td>
+      <td style="padding:5px 10px;color:#64748b;font-size:.8rem">${esc(cat.label)}</td>
+      <td style="padding:5px 10px;text-align:right;font-weight:600;color:${color};white-space:nowrap">${sign}${fmt(tx.amount)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Reporte ${esc(menu.name)} — ${monthLabel}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;color:#1e293b;padding:32px;font-size:14px}
+h1{font-size:1.4rem;margin-bottom:4px}
+.sub{color:#64748b;font-size:.82rem;margin-bottom:24px}
+.summary{display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.card{flex:1;min-width:130px;padding:14px 16px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0}
+.card .lbl{font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.card .val{font-size:1.25rem;font-weight:800}
+.green{color:#22c55e}.red{color:#ef4444}
+h2{font-size:.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b;margin:24px 0 8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
+table{width:100%;border-collapse:collapse}
+thead th{padding:5px 10px;text-align:left;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;border-bottom:2px solid #e2e8f0}
+tbody tr{border-bottom:1px solid #f1f5f9}
+.footer{margin-top:32px;font-size:.7rem;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px}
+@media print{body{padding:16px}}
+</style></head><body>
+<h1>${esc(menu.icon ?? '📋')} ${esc(menu.name)}</h1>
+<div class="sub">Reporte de ${monthLabel} &nbsp;·&nbsp; Generado el ${new Date().toLocaleDateString('es-ES')}</div>
+<div class="summary">
+  <div class="card"><div class="lbl">Ingresos</div><div class="val green">${fmt(inc)}</div></div>
+  <div class="card"><div class="lbl">Gastos</div><div class="val red">${fmt(exp)}</div></div>
+  <div class="card"><div class="lbl">Balance</div><div class="val ${bal >= 0 ? 'green' : 'red'}">${bal >= 0 ? '+' : ''}${fmt(bal)}</div></div>
+</div>
+${Object.keys(expByCat).length ? `<h2>Gastos por categoría</h2>
+<table><thead><tr><th>Categoría</th><th style="text-align:right">Monto</th><th style="text-align:right">Presupuesto</th></tr></thead>
+<tbody>${catRows}</tbody></table>` : ''}
+${sorted.length ? `<h2>Movimientos (${sorted.length})</h2>
+<table><thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th style="text-align:right">Monto</th></tr></thead>
+<tbody>${txRows}</tbody></table>` : '<p style="margin-top:16px;color:#64748b;font-style:italic">Sin movimientos este mes.</p>'}
+<div class="footer">💰 CashMap &nbsp;·&nbsp; Reporte generado automáticamente</div>
+<script>window.onload=()=>window.print()<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) { showToast('Habilita ventanas emergentes para ver el reporte', 'var(--yellow)', 4000); return; }
+  w.document.write(html);
+  w.document.close();
 }
 
 // ── Menu charts ───────────────────────────────────────────
@@ -585,6 +724,8 @@ function confirmDeleteMenuTx(menuId, txId) {
   const tx = getMenuTxs(menuId).find(t => t.id === txId);
   if (!tx) return;
   showConfirm(`¿Eliminar "${esc(tx.description)}"?`, () => {
+    const menu = getCustomMenu(menuId);
+    _logHistory({ menuId, menuName: menu?.name ?? '', action: 'delete', desc: tx.description, amount: tx.amount, txType: tx.type });
     deleteMenuTx(menuId, txId);
     pushDeleteToGas(menuId, txId);
     renderCustomMenu(menuId);

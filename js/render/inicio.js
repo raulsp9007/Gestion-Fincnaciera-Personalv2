@@ -400,6 +400,8 @@ async function saveTx() {
 
   if (_txContext.src === 'custom') {
     const mid = _txContext.menuId;
+    const menu = getCustomMenu(mid);
+    _logHistory({ menuId: mid, menuName: menu?.name ?? '', action: id ? 'edit' : 'create', desc, amount, txType: type });
     if (id) updateMenuTx(mid, parseInt(id, 10), fields);
     else    addMenuTx(mid, fields);
     document.getElementById('tx-modal').classList.remove('open');
