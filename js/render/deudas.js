@@ -225,8 +225,52 @@ function _openDeudaActionSheet(id) {
 }
 
 function _toggleDeudaHistSheet(id) {
-  const btn = document.querySelector(`button[onclick*="_toggleDeudaHist(${id},"]`);
-  if (btn) { _toggleDeudaHist(id, btn); } else { _toggleDeudaHist(id, { closest: () => null, textContent: '▶' }); }
+  openDeudaPagosModal(id);
+}
+
+function openDeudaPagosModal(deudaId) {
+  const d = _getDeudas().find(x => x.id === deudaId);
+  if (!d) return;
+
+  document.getElementById('deuda-pagos-overlay')?.remove();
+
+  const curr     = d.currency ?? '$';
+  const sign     = d.type === 'por_cobrar' ? '+' : '-';
+  const color    = d.type === 'por_cobrar' ? 'var(--green)' : 'var(--red)';
+  const payments = (d.payments ?? []).slice().reverse();
+  const isPagado = d.status === 'pagado';
+
+  const rows = payments.length
+    ? payments.map((p, i) => `
+        <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start;font-size:.82rem">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:${color}">${sign}${_fmtDeuda(p.amount, curr)}</div>
+            <div style="color:var(--text2);font-size:.72rem">${(p.datetime ?? p.date ?? '').replace('T', ' ')}</div>
+            ${p.notes ? `<div style="color:var(--text2);font-size:.72rem;margin-top:2px">${esc(p.notes)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn-icon" title="Editar" onclick="editPagoItem(${deudaId},${payments.length - 1 - i})">✏️</button>
+            <button class="btn-icon" title="Eliminar" style="color:var(--red)" onclick="deletePagoItem(${deudaId},${payments.length - 1 - i})">🗑</button>
+          </div>
+        </div>`).join('')
+    : `<div style="color:var(--text2);font-size:.82rem;padding:16px 0;text-align:center">Sin pagos registrados</div>`;
+
+  const overlay = document.createElement('div');
+  overlay.id        = 'deuda-pagos-overlay';
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:440px;width:95vw">
+      <h3 style="margin-bottom:4px">💸 Pagos — ${esc(d.persona)}</h3>
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:16px">${esc(d.description ?? '')} · ${_fmtDeuda(d.amount, curr)}</div>
+      <div style="max-height:55vh;overflow-y:auto">${rows}</div>
+      <div class="modal-actions" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+        ${!isPagado ? `<button class="btn btn-primary btn-sm" onclick="document.getElementById('deuda-pagos-overlay').remove();openPagoModal(${deudaId})">+ Registrar pago</button>` : ''}
+        <button class="btn btn-ghost" onclick="document.getElementById('deuda-pagos-overlay').remove()">Cerrar</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
 
 // ── Toggle historial inline ───────────────────────────────
