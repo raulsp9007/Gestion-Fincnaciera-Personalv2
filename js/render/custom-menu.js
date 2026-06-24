@@ -828,6 +828,7 @@ function openNewMenuModal() {
   document.getElementById('menu-name').value              = '';
   document.getElementById('menu-icon').value              = '📋';
   document.getElementById('menu-currency').value          = '€';
+  document.getElementById('menu-type').value              = 'normal';
   document.getElementById('menu-error').textContent       = '';
   document.getElementById('menu-modal').classList.add('open');
 }
@@ -838,6 +839,7 @@ function openEditMenuModal(menuId) {
   document.getElementById('menu-modal-id').value          = menuId;
   document.getElementById('menu-modal-title').textContent = 'Editar menú';
   document.getElementById('menu-name').value              = m.name;
+  document.getElementById('menu-type').value              = m.menuType ?? 'normal';
   document.getElementById('menu-icon').value              = m.icon ?? '📋';
   document.getElementById('menu-currency').value          = m.currency ?? '€';
   document.getElementById('menu-error').textContent       = '';
@@ -848,25 +850,29 @@ function closeMenuModal() {
   document.getElementById('menu-modal').classList.remove('open');
 }
 
+const _MENU_TYPE_ICONS = { normal: '📋', deudas: '💳', fuel: '⛽' };
+
 function saveMenuModal() {
-  const id   = document.getElementById('menu-modal-id').value;
-  const name = document.getElementById('menu-name').value.trim();
-  const icon = document.getElementById('menu-icon').value.trim() || '📋';
-  const curr = document.getElementById('menu-currency').value.trim() || '€';
-  const err  = document.getElementById('menu-error');
+  const id       = document.getElementById('menu-modal-id').value;
+  const name     = document.getElementById('menu-name').value.trim();
+  const menuType = document.getElementById('menu-type').value || 'normal';
+  const rawIcon  = document.getElementById('menu-icon').value.trim();
+  const icon     = rawIcon || _MENU_TYPE_ICONS[menuType] || '📋';
+  const curr     = document.getElementById('menu-currency').value.trim() || '€';
+  const err      = document.getElementById('menu-error');
   err.textContent = '';
 
   if (!name) { err.textContent = 'Nombre obligatorio.'; return; }
 
   if (id) {
     const mid = parseInt(id, 10);
-    updateCustomMenu(mid, { name, icon, currency: curr });
+    updateCustomMenu(mid, { name, icon, currency: curr, menuType });
     closeMenuModal();
     buildNav();
     renderCustomMenu(mid);
     showToast('Menú actualizado');
   } else {
-    const menu = addCustomMenu({ name, icon, currency: curr });
+    const menu = addCustomMenu({ name, icon, currency: curr, menuType });
     closeMenuModal();
     buildNav();
     switchView('menu-' + menu.id);
