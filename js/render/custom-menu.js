@@ -22,9 +22,9 @@ function _getSections(menuId) {
   if (!_menuSections[menuId]) {
     try {
       const all = JSON.parse(localStorage.getItem('cashmap_v2_sections') ?? '{}');
-      const def = { bar: true, cat: true, week: true, budget: true, catLimit: 8 };
+      const def = { bar: true, cat: true, week: true, budget: true, catLimit: 8, inc: false, incLimit: 8 };
       _menuSections[menuId] = all[menuId] ? { ...def, ...all[menuId] } : def;
-    } catch { _menuSections[menuId] = { bar: true, cat: true, week: true, budget: true, catLimit: 8 }; }
+    } catch { _menuSections[menuId] = { bar: true, cat: true, week: true, budget: true, catLimit: 8, inc: false, incLimit: 8 }; }
   }
   return _menuSections[menuId];
 }
@@ -47,6 +47,13 @@ function toggleMenuSection(menuId, key) {
 function setCatLimit(menuId, n) {
   const s = _getSections(menuId);
   s.catLimit = Math.max(1, Math.min(20, n || 8));
+  _saveSections(menuId);
+  renderCustomMenu(menuId);
+}
+
+function setIncLimit(menuId, n) {
+  const s = _getSections(menuId);
+  s.incLimit = Math.max(1, Math.min(20, n || 8));
   _saveSections(menuId);
   renderCustomMenu(menuId);
 }
@@ -158,6 +165,7 @@ function renderCustomMenu(menuId) {
   const hiddenChips = [
     !sec.bar    && { key: 'bar',    label: 'Ingresos vs Gastos' },
     !sec.cat    && { key: 'cat',    label: 'Gastos por categoría' },
+    !sec.inc    && { key: 'inc',    label: 'Ingresos por categoría' },
     !sec.week   && { key: 'week',   label: 'Gastos por semana' },
     !sec.budget && { key: 'budget', label: 'Presupuesto mensual' },
   ].filter(Boolean);
@@ -225,6 +233,19 @@ function renderCustomMenu(menuId) {
           </div>
         </div>
         <canvas id="cm-chart-cat-${menuId}" height="160"></canvas>
+      </div>` : ''}
+      ${sec.inc ? `<div class="chart-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0">Ingresos por categoría</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select class="btn btn-ghost btn-sm" style="padding:4px 6px;cursor:pointer" title="Categorías a mostrar"
+              onchange="setIncLimit(${menuId},+this.value)">
+              ${[3,4,5,6,7,8,9,10,12,15].map(n => `<option value="${n}"${n===(sec.incLimit??8)?' selected':''}>${n}</option>`).join('')}
+            </select>
+            <button class="btn-icon" title="Ocultar sección" onclick="toggleMenuSection(${menuId},'inc')" style="opacity:.6;font-size:.85rem">🙈</button>
+          </div>
+        </div>
+        <canvas id="cm-chart-inc-${menuId}" height="160"></canvas>
       </div>` : ''}
       ${sec.week ? `<div class="chart-box" style="grid-column:1/-1">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -385,7 +406,7 @@ ${sorted.length ? `<h2>Movimientos (${sorted.length})</h2>
 // ── Menu charts ───────────────────────────────────────────
 function _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec) {
   if (!_menuCharts[menuId]) _menuCharts[menuId] = {};
-  for (const key of ['bar', 'cat', 'week']) {
+  for (const key of ['bar', 'cat', 'inc', 'week']) {
     if (_menuCharts[menuId][key]) { _menuCharts[menuId][key].destroy(); _menuCharts[menuId][key] = null; }
   }
   if (typeof Chart === 'undefined') return;
@@ -446,6 +467,43 @@ function _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec) {
           onClick: (evt, elements) => {
             if (!elements.length) return;
             const catKey = sorted[elements[0].index]?.[0];
+            if (!catKey) return;
+            const sel = document.getElementById(`cmf-c-${menuId}`);
+            if (!sel) return;
+            sel.value = sel.value === catKey ? '' : catKey;
+            renderCustomMenu(menuId);
+          },
+          onHover: (evt) => { if (evt.native) evt.native.target.style.cursor = 'pointer'; }
+        }
+      });
+    }
+  }
+
+  // ── Doughnut — top income cats ────────────────────────
+  if (sec.inc) {
+    const incTotals = {};
+    for (const t of allTxs.filter(t => t.type === 'inc')) {
+      incTotals[t.category] = (incTotals[t.category] ?? 0) + t.amount;
+    }
+    const sortedInc = Object.entries(incTotals).sort((a, b) => b[1] - a[1]).slice(0, sec.incLimit ?? 8);
+    const ctx3      = document.getElementById(`cm-chart-inc-${menuId}`);
+    if (ctx3 && sortedInc.length) {
+      const incCats = cats.inc ?? {};
+      _menuCharts[menuId].inc = new Chart(ctx3, {
+        type: 'doughnut',
+        data: {
+          labels: sortedInc.map(([k]) => incCats[k]?.label ?? k),
+          datasets: [{ data: sortedInc.map(([, v]) => v), backgroundColor: sortedInc.map(([k]) => _getCatColor(k)), borderWidth: 2, borderColor: '#1e293b' }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '60%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10, padding: 8 } },
+            tooltip: { callbacks: { label: c => ` ${_fmtCurr(c.raw, curr)}` } }
+          },
+          onClick: (evt, elements) => {
+            if (!elements.length) return;
+            const catKey = sortedInc[elements[0].index]?.[0];
             if (!catKey) return;
             const sel = document.getElementById(`cmf-c-${menuId}`);
             if (!sel) return;
