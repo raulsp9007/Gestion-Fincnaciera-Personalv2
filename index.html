@@ -363,7 +363,7 @@
 
 <!-- ── ADMIN PANEL MODAL ───────────────────────────────── -->
 <div class="modal-overlay" id="admin-modal">
-  <div class="modal" style="width:540px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+  <div class="modal" style="width:min(540px,96vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
     <h3 style="margin-bottom:14px">⚙️ Panel Admin</h3>
 
     <!-- Tab bar -->
@@ -447,6 +447,9 @@
         <p style="font-size:.72rem;color:var(--text2);margin:6px 0 16px">
           Afecta fechas por defecto en nuevos registros y organización de meses.
         </p>
+
+        <div class="section-title">Menús personalizados</div>
+        <div id="admin-menus-list"></div>
 
         <div class="section-title">Exportar</div>
         <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar JSON completo</button>

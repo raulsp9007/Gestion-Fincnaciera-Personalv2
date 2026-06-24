@@ -7,8 +7,52 @@ function openAdminPanel() {
   renderAutosaveSection();
   renderSharedDeudasAdmin();
   _renderTimezoneSection();
+  _renderAdminMenusList();
   document.getElementById('admin-modal').classList.add('open');
   switchAdminTab('usuarios');
+}
+
+function _renderAdminMenusList() {
+  const el = document.getElementById('admin-menus-list');
+  if (!el) return;
+  const menus = loadData().customMenus ?? [];
+  if (!menus.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:.78rem;margin-bottom:12px">Sin menús creados.</div>';
+    return;
+  }
+  el.innerHTML = menus.map(m => {
+    const txCount = (m.data ?? []).length;
+    return `<div class="cat-row">
+      <span style="font-size:1.1rem;flex-shrink:0">${esc(m.icon ?? '📋')}</span>
+      <span class="cat-row-label" style="font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+      <span style="font-size:.7rem;color:var(--text2);flex-shrink:0">${txCount} reg.</span>
+      <div class="cat-row-actions">
+        <button title="Eliminar menú" onclick="confirmAdminDeleteMenu(${m.id})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function confirmAdminDeleteMenu(menuId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu) return;
+  const txCount = (menu.data ?? []).length;
+  showConfirm(
+    `¿Eliminar menú "${menu.icon ?? ''} ${menu.name}"? Se borrarán ${txCount} registro(s). Esta acción no se puede deshacer.`,
+    () => _doDeleteMenu(menuId),
+    { icon: '🗑️', okLabel: 'Eliminar' }
+  );
+}
+
+function _doDeleteMenu(menuId) {
+  deleteCustomMenu(menuId);
+  saveData();
+  if (typeof scheduleSave === 'function') scheduleSave();
+  if (typeof buildNav === 'function') buildNav();
+  const currentView = document.querySelector('.view.active')?.id;
+  if (currentView === 'view-custom') switchView('inicio');
+  _renderAdminMenusList();
+  showToast('Menú eliminado', 'var(--red)');
 }
 
 function _renderTimezoneSection() {
