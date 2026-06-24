@@ -821,6 +821,53 @@ function confirmDeleteMenuTx(menuId, txId) {
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }
 
+// ── Emoji picker ──────────────────────────────────────────
+const _EMOJI_LIST = [
+  // Finanzas
+  '💰','💵','💴','💶','💷','💸','💳','🏧','💹','📈','📉','📊','🏦','🪙','💎',
+  // Transporte / combustible
+  '⛽','🚗','🚕','🚙','🚌','🏎','🛻','✈','🚂','🛵','🚲','⛵','🚁','🛺',
+  // Hogar
+  '🏠','🏡','🏢','🛒','🧹','💡','🔧','🛁','🛏','🪴','🏗','🪟','🚪',
+  // Comida
+  '🍕','🍔','🌮','🍜','🍣','☕','🍺','🥗','🍰','🛒','🧃','🥤',
+  // Salud
+  '🏥','💊','🩺','🏋','🧘','🚑','🩹','🧬','🦷','👁','🧠',
+  // Trabajo
+  '💼','📁','📂','📋','📌','📎','🖊','📝','💻','🖥','📱','🖨','⌨',
+  // Ocio / entretenimiento
+  '🎮','🎬','🎵','🎨','📚','🎲','🏖','🏔','🗺','🎯','🎁','🏆','🥇','🎭',
+  // Personas / familia
+  '👨‍👩‍👧','👶','🧒','👦','👧','👨','👩','🧓','👴','👵',
+  // Animales
+  '🐶','🐱','🐦','🐠','🐾','🌿','🌱','🌳','🌻','🌊',
+  // Misc
+  '⭐','❤','🔥','✨','🎉','📣','🔑','🧧','📦','🗓','🕐','🌍','🏳','🚀',
+];
+
+function _initEmojiPicker() {
+  const grid = document.getElementById('emoji-grid');
+  if (!grid || grid.childElementCount) return;
+  grid.innerHTML = _EMOJI_LIST.map(e =>
+    `<button type="button" onclick="pickEmoji('${e}')"
+      style="font-size:1.4rem;width:36px;height:36px;border:none;background:transparent;
+             cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center"
+      onmouseover="this.style.background='var(--bg3)'"
+      onmouseout="this.style.background='transparent'">${e}</button>`
+  ).join('');
+}
+
+function toggleEmojiPicker() {
+  _initEmojiPicker();
+  const picker = document.getElementById('emoji-picker');
+  picker.style.display = picker.style.display === 'none' ? '' : 'none';
+}
+
+function pickEmoji(e) {
+  document.getElementById('menu-icon').value = e;
+  document.getElementById('emoji-picker').style.display = 'none';
+}
+
 // ── Menu create/edit modal ────────────────────────────────
 function openNewMenuModal() {
   document.getElementById('menu-modal-id').value          = '';
@@ -848,6 +895,8 @@ function openEditMenuModal(menuId) {
 
 function closeMenuModal() {
   document.getElementById('menu-modal').classList.remove('open');
+  const p = document.getElementById('emoji-picker');
+  if (p) p.style.display = 'none';
 }
 
 const _MENU_TYPE_ICONS = { normal: '📋', deudas: '💳', fuel: '⛽' };
