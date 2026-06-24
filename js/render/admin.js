@@ -77,7 +77,7 @@ function switchAdminTab(id) {
   // Activar botón correspondiente
   const bar = document.getElementById('admin-tab-bar');
   if (bar) {
-    const idx = ['usuarios','categorias','autosave','datos'].indexOf(id);
+    const idx = ['usuarios','categorias','autosave','datos','menus'].indexOf(id);
     const btns = bar.querySelectorAll('.admin-tab');
     if (btns[idx]) btns[idx].classList.add('active');
   }

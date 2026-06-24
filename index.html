@@ -372,6 +372,7 @@
       <button class="admin-tab"        onclick="switchAdminTab('categorias')">🏷️ Categorías</button>
       <button class="admin-tab"        onclick="switchAdminTab('autosave')">💾 Autoguardado</button>
       <button class="admin-tab"        onclick="switchAdminTab('datos')">📦 Export / Import</button>
+      <button class="admin-tab"        onclick="switchAdminTab('menus')">📋 Menús</button>
     </div>
 
     <!-- Contenido scrollable -->
@@ -447,9 +448,6 @@
           Afecta fechas por defecto en nuevos registros y organización de meses.
         </p>
 
-        <div class="section-title">Menús personalizados</div>
-        <div id="admin-menus-list"></div>
-
         <div class="section-title">Exportar</div>
         <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar JSON completo</button>
         <p style="font-size:.72rem;color:var(--text2);margin:6px 0 16px">
@@ -466,6 +464,12 @@
         <p style="font-size:.72rem;color:var(--text2);margin:6px 0 0">
           No borra datos existentes. Fusiona con los locales.
         </p>
+      </div>
+
+      <!-- TAB: Menús -->
+      <div id="admin-tab-menus" class="admin-tab-panel" style="display:none">
+        <div class="section-title" style="margin-top:0">Menús personalizados</div>
+        <div id="admin-menus-list"></div>
       </div>
 
     </div><!-- /scroll -->
