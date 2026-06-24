@@ -730,7 +730,7 @@ function confirmDeleteMenuTx(menuId, txId) {
   if (!tx) return;
   showConfirm(`¿Eliminar "${esc(tx.description)}"?`, () => {
     const menu = getCustomMenu(menuId);
-    _logHistory({ menuId, menuName: menu?.name ?? '', action: 'delete', desc: tx.description, amount: tx.amount, txType: tx.type });
+    if (typeof _logHistory === 'function') _logHistory({ menuId, menuName: menu?.name ?? '', action: 'delete', desc: tx.description, amount: tx.amount, txType: tx.type });
     deleteMenuTx(menuId, txId);
     pushDeleteToGas(menuId, txId);
     renderCustomMenu(menuId);
