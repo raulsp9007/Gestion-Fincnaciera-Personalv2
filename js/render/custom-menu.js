@@ -105,7 +105,7 @@ function renderCustomMenu(menuId) {
   const menu = getCustomMenu(menuId);
   if (!menu) { switchView('inicio'); return; }
 
-  if (!_menuMonth[menuId]) _menuMonth[menuId] = new Date().toISOString().slice(0, 7);
+  if (!_menuMonth[menuId]) _menuMonth[menuId] = _nowYM();
   const ym      = _menuMonth[menuId];
   const cats    = loadData().globalCats;
   const allTxs  = getMenuTxs(menuId);
@@ -125,7 +125,7 @@ function renderCustomMenu(menuId) {
   const bal = inc - exp;
 
   // 4th card
-  const thisYM = new Date().toISOString().slice(0, 7);
+  const thisYM = _nowYM();
   let fourthCard;
   if (ym === thisYM) {
     const today   = new Date();
@@ -282,7 +282,7 @@ function _menuBudgetSection(monthTxs, cats, curr, menuId, sec) {
 function generateMenuReport(menuId) {
   const menu = getCustomMenu(menuId);
   if (!menu) return;
-  const ym       = _menuMonth[menuId] || new Date().toISOString().slice(0, 7);
+  const ym       = _menuMonth[menuId] || _nowYM();
   const allTxs   = getMenuTxs(menuId);
   const monthTxs = allTxs.filter(t => t.date.startsWith(ym));
   const cats     = loadData().globalCats;
@@ -300,7 +300,8 @@ function generateMenuReport(menuId) {
 
   const fmt = n => (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + curr;
   const monthLabel = new Date(ym + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-  const sorted = [...monthTxs].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...monthTxs].sort((a, b) =>
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')));
 
   const catRows = Object.entries(expByCat).map(([key, amount]) => {
     const cat    = cats.exp?.[key] ?? { label: key, color: '#64748b' };
@@ -531,10 +532,11 @@ function _fmtCurr(n, curr) {
 
 // ── Month tabs ────────────────────────────────────────────
 function _menuMonthTabs(menuId, ym) {
+  const tz     = getTimezone();
   const now    = new Date();
   const months = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    return d.toISOString().slice(0, 7);
+    return d.toLocaleDateString('en-CA', { timeZone: tz }).slice(0, 7);
   });
   return `<div class="month-tabs">
     ${months.map(m => `
@@ -561,7 +563,8 @@ function _menuTxTable(menu, txs, cats, curr, fSearch = '', fType = '', fCat = ''
   if (fCat)    list = list.filter(t => t.category === fCat);
   if (fFrom)   list = list.filter(t => t.date >= fFrom);
   if (fTo)     list = list.filter(t => t.date <= fTo);
-  const sorted = list.sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = list.sort((a, b) =>
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')));
 
   const catsHtml = [
     ...Object.entries(cats.inc ?? {}).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`),

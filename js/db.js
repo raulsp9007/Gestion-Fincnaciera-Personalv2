@@ -22,6 +22,27 @@ function saveData() {
   localStorage.setItem(CACHE_KEY, JSON.stringify(_data));
 }
 
+// ── Timezone helpers ──────────────────────────────────────
+function getTimezone() {
+  return loadData().config?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+function setTimezone(tz) {
+  const d = loadData();
+  if (!d.config) d.config = {};
+  d.config.timezone = tz;
+  saveData();
+  if (typeof scheduleSave === 'function') scheduleSave();
+}
+function _nowDate() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: getTimezone() });
+}
+function _nowYM() {
+  return _nowDate().slice(0, 7);
+}
+function _nowTime() {
+  return new Date().toLocaleTimeString('en-GB', { timeZone: getTimezone(), hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 // ── Transactions — Inicio ─────────────────────────────────
 function getTxs() {
   return loadData().inicio;

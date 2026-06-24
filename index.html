@@ -126,6 +126,9 @@
       <div class="top-actions">
         <button class="btn btn-ghost btn-sm" id="btn-new" onclick="openNewRecordModal()">+ Nuevo</button>
         <button class="btn btn-ghost btn-sm" id="btn-admin" onclick="openAdminPanel()" style="display:none">⚙️ Admin</button>
+        <button id="btn-search-global" onclick="openGlobalSearch()" title="Buscar (Ctrl+K)"
+              style="background:none;border:none;color:var(--text2);cursor:pointer;padding:5px 7px;font-size:1.05rem;line-height:1;border-radius:8px;transition:.15s;flex-shrink:0"
+              onmouseenter="this.style.color='var(--text)'" onmouseleave="this.style.color='var(--text2)'">🔍</button>
         <div id="user-badge" onclick="openUserMenu()">
           <span id="topbar-user-name">—</span>
           <span class="role-chip" id="topbar-role-chip"></span>
@@ -226,6 +229,12 @@
     </button>
     <button class="admin-sheet-btn" onclick="closeAdminSheet();openCatsModal()">
       <span>🏷️</span><span>Categorías</span>
+    </button>
+    <button id="admin-sheet-install" class="admin-sheet-btn" style="display:none" onclick="closeAdminSheet();installPwa()">
+      <span>📲</span><span>Instalar app</span>
+    </button>
+    <button class="admin-sheet-btn" onclick="closeAdminSheet();openGlobalSearch()">
+      <span>🔍</span><span>Buscar</span>
     </button>
     <button class="admin-sheet-btn admin-sheet-logout" onclick="closeAdminSheet();logout()">
       <span>🚪</span><span>Cerrar sesión</span>
@@ -413,7 +422,33 @@
 
       <!-- TAB: Export / Import -->
       <div id="admin-tab-datos" class="admin-tab-panel" style="display:none">
-        <div class="section-title" style="margin-top:0">Exportar</div>
+        <div class="section-title" style="margin-top:0">Zona horaria</div>
+        <select id="admin-timezone-sel" class="input" style="max-width:320px" onchange="saveTimezone(this.value)">
+          <option value="America/Mexico_City">México (GMT-6)</option>
+          <option value="America/Bogota">Colombia (GMT-5)</option>
+          <option value="America/Lima">Perú (GMT-5)</option>
+          <option value="America/Caracas">Venezuela (GMT-4)</option>
+          <option value="America/La_Paz">Bolivia (GMT-4)</option>
+          <option value="America/Santiago">Chile (GMT-4/-3)</option>
+          <option value="America/Argentina/Buenos_Aires">Argentina (GMT-3)</option>
+          <option value="America/Montevideo">Uruguay (GMT-3)</option>
+          <option value="America/Asuncion">Paraguay (GMT-4/-3)</option>
+          <option value="America/Guayaquil">Ecuador (GMT-5)</option>
+          <option value="America/Panama">Panamá / Costa Rica (GMT-5)</option>
+          <option value="America/Guatemala">Guatemala / El Salvador (GMT-6)</option>
+          <option value="America/Santo_Domingo">Rep. Dominicana (GMT-4)</option>
+          <option value="America/Puerto_Rico">Puerto Rico (GMT-4)</option>
+          <option value="Europe/Madrid">España (GMT+1/+2)</option>
+          <option value="Atlantic/Canary">Islas Canarias (GMT+0/+1)</option>
+          <option value="America/New_York">Este EE.UU. (GMT-5/-4)</option>
+          <option value="America/Los_Angeles">Pacífico EE.UU. (GMT-8/-7)</option>
+          <option value="UTC">UTC</option>
+        </select>
+        <p style="font-size:.72rem;color:var(--text2);margin:6px 0 16px">
+          Afecta fechas por defecto en nuevos registros y organización de meses.
+        </p>
+
+        <div class="section-title">Exportar</div>
         <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar JSON completo</button>
         <p style="font-size:.72rem;color:var(--text2);margin:6px 0 16px">
           Incluye todos los datos locales: inicio, deudas, menús, categorías.
@@ -717,6 +752,35 @@
     <div class="confirm-actions">
       <button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
       <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── BÚSQUEDA GLOBAL ───────────────────────────────────── -->
+<div class="modal-overlay" id="search-modal">
+  <div class="modal" style="width:560px;max-height:80vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:1rem;opacity:.6">🔍</span>
+      <input id="search-input" type="text" placeholder="Buscar en todos los menús, deudas…"
+             oninput="onGlobalSearch()" autocomplete="off"
+             style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.9rem;outline:none">
+    </div>
+    <div id="search-results" style="overflow-y:auto;flex:1;min-height:60px"></div>
+    <div class="modal-actions" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <span style="font-size:.72rem;color:var(--text2)">Ctrl+K para abrir · Esc para cerrar</span>
+      <button class="btn btn-ghost" onclick="closeGlobalSearch()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HISTORIAL DE CAMBIOS ──────────────────────────────── -->
+<div class="modal-overlay" id="history-modal">
+  <div class="modal" style="width:480px;max-height:80vh;display:flex;flex-direction:column">
+    <h3 id="history-modal-title" style="margin-bottom:14px">📋 Historial de cambios</h3>
+    <div id="history-modal-list" style="overflow-y:auto;flex:1"></div>
+    <div class="modal-actions" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <button class="btn btn-ghost btn-sm" style="color:var(--red);margin-right:auto" onclick="clearMenuHistory()">🗑 Borrar historial</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('history-modal').classList.remove('open')">Cerrar</button>
     </div>
   </div>
 </div>

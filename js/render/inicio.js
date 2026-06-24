@@ -28,7 +28,7 @@ function _monthLabel(ym) {
 }
 
 function _ym() {
-  return new Date().toISOString().slice(0, 7);
+  return _nowYM();
 }
 
 // ── Main render — Vista General ───────────────────────────
@@ -165,10 +165,11 @@ function _drawOverviewCharts(menu, cats) {
 // ── Month tabs ────────────────────────────────────────────
 function _buildMonthTabs() {
   const months = [];
-  const now    = new Date();
+  const tz  = getTimezone();
+  const now = new Date();
   for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(d.toISOString().slice(0, 7));
+    const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toLocaleDateString('en-CA', { timeZone: tz }).slice(0, 7));
   }
   return `<div class="month-tabs">
     ${months.map(ym => `
@@ -213,7 +214,8 @@ function _renderNote(note) {
 
 // ── Transaction table ─────────────────────────────────────
 function _buildTxTable(txs, cats) {
-  const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...txs].sort((a, b) =>
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')));
 
   if (!sorted.length) return `
     <div class="tbl-wrap">
@@ -316,8 +318,8 @@ function openNewRecordModal() {
   document.getElementById('tx-modal-curr').textContent = `(${curr})`;
   document.getElementById('tx-id').value              = '';
   document.getElementById('tx-modal-title').textContent = 'Nuevo movimiento';
-  document.getElementById('tx-date').value            = new Date().toISOString().slice(0, 10);
-  document.getElementById('tx-time').value            = new Date().toTimeString().slice(0, 5);
+  document.getElementById('tx-date').value            = _nowDate();
+  document.getElementById('tx-time').value            = _nowTime();
   document.getElementById('tx-amount').value          = '';
   document.getElementById('tx-desc').value            = '';
   document.getElementById('tx-notes').value           = '';

@@ -6,8 +6,23 @@ function openAdminPanel() {
   renderGasSection();
   renderAutosaveSection();
   renderSharedDeudasAdmin();
+  _renderTimezoneSection();
   document.getElementById('admin-modal').classList.add('open');
   switchAdminTab('usuarios');
+}
+
+function _renderTimezoneSection() {
+  const sel = document.getElementById('admin-timezone-sel');
+  if (!sel) return;
+  const tz = getTimezone();
+  // try exact match first, fallback to closest
+  const opt = sel.querySelector(`option[value="${CSS.escape(tz)}"]`);
+  if (opt) sel.value = tz;
+}
+
+function saveTimezone(tz) {
+  setTimezone(tz);
+  showToast('Zona horaria guardada');
 }
 
 function switchAdminTab(id) {
