@@ -22,8 +22,9 @@ function _getSections(menuId) {
   if (!_menuSections[menuId]) {
     try {
       const all = JSON.parse(localStorage.getItem('cashmap_v2_sections') ?? '{}');
-      _menuSections[menuId] = all[menuId] ?? { bar: true, cat: true, week: true, budget: true };
-    } catch { _menuSections[menuId] = { bar: true, cat: true, week: true, budget: true }; }
+      const def = { bar: true, cat: true, week: true, budget: true, catLimit: 8 };
+      _menuSections[menuId] = all[menuId] ? { ...def, ...all[menuId] } : def;
+    } catch { _menuSections[menuId] = { bar: true, cat: true, week: true, budget: true, catLimit: 8 }; }
   }
   return _menuSections[menuId];
 }
@@ -39,6 +40,13 @@ function _saveSections(menuId) {
 function toggleMenuSection(menuId, key) {
   const s = _getSections(menuId);
   s[key] = !s[key];
+  _saveSections(menuId);
+  renderCustomMenu(menuId);
+}
+
+function setCatLimit(menuId, n) {
+  const s = _getSections(menuId);
+  s.catLimit = Math.max(1, Math.min(20, n || 8));
   _saveSections(menuId);
   renderCustomMenu(menuId);
 }
@@ -208,6 +216,10 @@ function renderCustomMenu(menuId) {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <h3 style="margin:0">Gastos por categoría</h3>
           <div style="display:flex;gap:6px;align-items:center">
+            <select class="btn btn-ghost btn-sm" style="padding:4px 6px;cursor:pointer" title="Categorías a mostrar"
+              onchange="setCatLimit(${menuId},+this.value)">
+              ${[3,4,5,6,7,8,9,10,12,15].map(n => `<option value="${n}"${n===sec.catLimit?' selected':''}>${n}</option>`).join('')}
+            </select>
             <button class="btn btn-ghost btn-sm" onclick="openMenuCatColors(${menuId})">🎨 Colores</button>
             <button class="btn-icon" title="Ocultar sección" onclick="toggleMenuSection(${menuId},'cat')" style="opacity:.6;font-size:.85rem">🙈</button>
           </div>
@@ -415,7 +427,7 @@ function _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec) {
     for (const t of allTxs.filter(t => t.type === 'exp')) {
       catTotals[t.category] = (catTotals[t.category] ?? 0) + t.amount;
     }
-    const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, sec.catLimit ?? 8);
     const ctx2   = document.getElementById(`cm-chart-cat-${menuId}`);
     if (ctx2 && sorted.length) {
       const expCats = cats.exp ?? {};
@@ -480,7 +492,7 @@ function openMenuCatColors(menuId) {
   for (const t of allTxs.filter(t => t.type === 'exp')) {
     totals[t.category] = (totals[t.category] ?? 0) + t.amount;
   }
-  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, _getSections(menuId).catLimit ?? 8);
   const curr   = getCustomMenu(menuId)?.currency ?? '€';
 
   const rows = sorted.map(([key, amt]) => {
