@@ -442,7 +442,17 @@ function _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec) {
           plugins: {
             legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10, padding: 8 } },
             tooltip: { callbacks: { label: c => ` ${_fmtCurr(c.raw, curr)}` } }
-          }
+          },
+          onClick: (evt, elements) => {
+            if (!elements.length) return;
+            const catKey = sorted[elements[0].index]?.[0];
+            if (!catKey) return;
+            const sel = document.getElementById(`cmf-c-${menuId}`);
+            if (!sel) return;
+            sel.value = sel.value === catKey ? '' : catKey;
+            renderCustomMenu(menuId);
+          },
+          onHover: (evt) => { if (evt.native) evt.native.target.style.cursor = 'pointer'; }
         }
       });
     }
