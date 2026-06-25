@@ -119,6 +119,7 @@ function _dayToWeek(dateStr) {
 function renderCustomMenu(menuId) {
   const menu = getCustomMenu(menuId);
   if (!menu) { switchView('inicio'); return; }
+  if (menu.menuType === 'fuel') { renderFuelMenu(menuId); return; }
 
   if (!_menuMonth[menuId]) _menuMonth[menuId] = _nowYM();
   const ym      = _menuMonth[menuId];
@@ -1099,4 +1100,329 @@ async function saveShareModal() {
     setSyncBadge('error');
     errEl.textContent = 'Error al sincronizar: ' + e.message;
   }
+}
+
+// ── FUEL MENU ────────────────────────────────────────────────
+const _FUEL_TYPE_EMOJI = {
+  regular: '🟢', premium: '🔵', diesel: '🟡', glp: '🟠', electric: '⚡'
+};
+
+function renderFuelMenu(menuId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu) { switchView('inicio'); return; }
+
+  if (!_menuMonth[menuId]) _menuMonth[menuId] = _nowYM();
+  const ym   = _menuMonth[menuId];
+  const curr = menu.currency || '$';
+
+  // Destroy existing fuel charts
+  for (const key of ['fuel_price', 'fuel_cons', 'fuel_monthly']) {
+    const k = `${menuId}_${key}`;
+    if (_charts[k]) { _charts[k].destroy(); delete _charts[k]; }
+  }
+
+  const allEntries   = getMenuTxs(menuId).filter(e => !e._deleted);
+  const monthEntries = allEntries.filter(e => e.date?.startsWith(ym));
+
+  // Stats
+  const totalCost   = monthEntries.reduce((s, e) => s + (e.totalCost || 0), 0);
+  const totalLiters = monthEntries.reduce((s, e) => s + (e.liters    || 0), 0);
+  const avgPrice    = totalLiters > 0 ? totalCost / totalLiters : 0;
+
+  // Consumption: consecutive odometer pairs across ALL entries
+  const odomSorted = [...allEntries]
+    .filter(e => e.odometerKm > 0 && e.liters > 0)
+    .sort((a, b) => (a.date + (a.time || '00:00')).localeCompare(b.date + (b.time || '00:00')));
+  const consMap = new Map();
+  for (let i = 1; i < odomSorted.length; i++) {
+    const km = odomSorted[i].odometerKm - odomSorted[i - 1].odometerKm;
+    if (km > 0) consMap.set(odomSorted[i].id, km / odomSorted[i].liters);
+  }
+
+  const monthWithCons = monthEntries.filter(e => consMap.has(e.id));
+  const avgCons  = monthWithCons.length
+    ? monthWithCons.reduce((s, e) => s + consMap.get(e.id), 0) / monthWithCons.length : 0;
+  const costPerKm = avgCons > 0 ? avgPrice / avgCons : 0;
+
+  const el = document.getElementById('view-custom');
+  el.innerHTML = `
+    <div class="menu-header">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:1.6rem">${esc(menu.icon ?? '⛽')}</span>
+        <h2 style="font-size:1.1rem;font-weight:700">${esc(menu.name)}</h2>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${_canEditMenu(menu) ? `
+          <button class="btn btn-ghost btn-sm" onclick="openEditMenuModal(${menuId})">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="confirmDeleteMenu(${menuId})">🗑️</button>
+        ` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="generateMenuReport(${menuId})">📊 Reporte</button>
+      </div>
+    </div>
+    ${_menuMonthTabs(menuId, ym)}
+    <div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+      <div class="card red">
+        <div class="label">Total gastado</div>
+        <div class="value">${_fmtCurr(totalCost, curr)}</div>
+      </div>
+      <div class="card blue">
+        <div class="label">Litros cargados</div>
+        <div class="value" style="font-size:1.4rem">${totalLiters > 0 ? totalLiters.toFixed(2) + ' L' : '—'}</div>
+      </div>
+      <div class="card">
+        <div class="label">Precio prom/L</div>
+        <div class="value" style="font-size:1.3rem">${avgPrice > 0 ? _fmtCurr(avgPrice, curr) : '—'}</div>
+      </div>
+      <div class="card green">
+        <div class="label">Consumo</div>
+        <div class="value" style="font-size:1.3rem">${avgCons > 0 ? avgCons.toFixed(2) + ' km/L' : '—'}</div>
+        <div style="font-size:.7rem;color:var(--text2);margin-top:2px">${
+          monthWithCons.length ? monthWithCons.length + ' cargas' : 'sin odómetro'}</div>
+      </div>
+      <div class="card">
+        <div class="label">Costo / km</div>
+        <div class="value" style="font-size:1.3rem">${costPerKm > 0 ? _fmtCurr(costPerKm, curr) : '—'}</div>
+      </div>
+      <div class="card blue">
+        <div class="label">Cargas este mes</div>
+        <div class="value" style="font-size:1.6rem">${monthEntries.length}</div>
+        <div style="font-size:.7rem;color:var(--text2);margin-top:2px">de ${allEntries.length} total</div>
+      </div>
+    </div>
+    ${_canWriteMenuTxs(menu) ? `
+      <div style="margin:12px 0">
+        <button class="btn btn-primary" onclick="openFuelEntryModal(${menuId})">⛽ Registrar carga</button>
+      </div>
+    ` : ''}
+    <div id="fuel-history-${menuId}">
+      ${_renderFuelHistory(menuId, monthEntries, consMap, curr)}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-top:20px">
+      <div class="chart-box" id="fuel-price-box-${menuId}">
+        <h3 style="margin:0 0 8px;font-size:.95rem">📈 Precio por litro</h3>
+        <canvas id="fuel-chart-price-${menuId}" height="200"></canvas>
+      </div>
+      <div class="chart-box" id="fuel-cons-box-${menuId}">
+        <h3 style="margin:0 0 8px;font-size:.95rem">🚗 Consumo (km/L)</h3>
+        <canvas id="fuel-chart-cons-${menuId}" height="200"></canvas>
+      </div>
+      <div class="chart-box" id="fuel-monthly-box-${menuId}">
+        <h3 style="margin:0 0 8px;font-size:.95rem">📊 Gasto mensual</h3>
+        <canvas id="fuel-chart-monthly-${menuId}" height="200"></canvas>
+      </div>
+    </div>
+  `;
+
+  requestAnimationFrame(() => _renderFuelCharts(menuId, allEntries, odomSorted, consMap, curr));
+}
+
+function _renderFuelHistory(menuId, entries, consMap, curr) {
+  if (!entries.length) {
+    return `<div style="text-align:center;color:var(--text2);padding:32px 0;font-size:.9rem">
+      Sin registros este mes. Registra tu primera carga ⛽
+    </div>`;
+  }
+  const sorted = [...entries].sort((a, b) =>
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00'))
+  );
+  return `<div style="display:flex;flex-direction:column;gap:8px">
+    ${sorted.map(e => {
+      const cons  = consMap.get(e.id);
+      const emoji = _FUEL_TYPE_EMOJI[e.fuelType] ?? '⛽';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:1.4rem;min-width:32px;text-align:center">${emoji}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.88rem">${esc(e.station || 'Gasolinera')}</div>
+          <div style="font-size:.75rem;color:var(--text2)">${e.date}${e.time ? ' ' + e.time : ''}${e.odometerKm > 0 ? ' · ' + e.odometerKm.toLocaleString() + ' km' : ''}</div>
+          ${cons ? `<div style="font-size:.72rem;color:var(--green);margin-top:2px">🚗 ${cons.toFixed(2)} km/L</div>` : ''}
+          ${e.notes ? `<div style="font-size:.72rem;color:var(--text2);margin-top:2px">${esc(e.notes)}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;color:var(--red)">${_fmtCurr(e.totalCost || 0, curr)}</div>
+          <div style="font-size:.75rem;color:var(--text2)">${(e.liters ?? 0).toFixed(2)} L · ${_fmtCurr(e.pricePerLiter || 0, curr)}/L</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openFuelEntryModal(${menuId},${e.id})"
+                style="flex-shrink:0;padding:4px 8px">✏️</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function _renderFuelCharts(menuId, allEntries, odomSorted, consMap, curr) {
+  const asc = [...allEntries].sort((a, b) =>
+    (a.date + (a.time || '00:00')).localeCompare(b.date + (b.time || '00:00'))
+  );
+
+  // Price / litro — last 20
+  const priceEntries = asc.slice(-20);
+  const priceCanv = document.getElementById(`fuel-chart-price-${menuId}`);
+  if (priceCanv) {
+    if (priceEntries.length > 1) {
+      _charts[`${menuId}_fuel_price`] = new Chart(priceCanv, {
+        type: 'line',
+        data: {
+          labels: priceEntries.map(e => e.date),
+          datasets: [{
+            label: 'Precio/L',
+            data: priceEntries.map(e => e.pricePerLiter),
+            borderColor: 'var(--accent)', backgroundColor: 'transparent',
+            tension: 0.3, pointRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: false } }
+        }
+      });
+    } else {
+      document.getElementById(`fuel-price-box-${menuId}`)?.style && (document.getElementById(`fuel-price-box-${menuId}`).style.display = 'none');
+    }
+  }
+
+  // Consumo km/L
+  const consEntries = odomSorted.filter(e => consMap.has(e.id));
+  const consCanv = document.getElementById(`fuel-chart-cons-${menuId}`);
+  if (consCanv) {
+    if (consEntries.length > 1) {
+      _charts[`${menuId}_fuel_cons`] = new Chart(consCanv, {
+        type: 'line',
+        data: {
+          labels: consEntries.map(e => e.date),
+          datasets: [{
+            label: 'km/L',
+            data: consEntries.map(e => consMap.get(e.id)),
+            borderColor: '#4caf50', backgroundColor: 'transparent',
+            tension: 0.3, pointRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: false } }
+        }
+      });
+    } else {
+      document.getElementById(`fuel-cons-box-${menuId}`)?.style && (document.getElementById(`fuel-cons-box-${menuId}`).style.display = 'none');
+    }
+  }
+
+  // Gasto mensual — últimos 6 meses
+  const monthlyMap = {};
+  for (const e of allEntries) {
+    const ym = e.date?.slice(0, 7);
+    if (ym) monthlyMap[ym] = (monthlyMap[ym] || 0) + (e.totalCost || 0);
+  }
+  const monthKeys = Object.keys(monthlyMap).sort().slice(-6);
+  const monthCanv = document.getElementById(`fuel-chart-monthly-${menuId}`);
+  if (monthCanv) {
+    if (monthKeys.length > 0) {
+      _charts[`${menuId}_fuel_monthly`] = new Chart(monthCanv, {
+        type: 'bar',
+        data: {
+          labels: monthKeys,
+          datasets: [{
+            label: 'Gasto',
+            data: monthKeys.map(k => monthlyMap[k]),
+            backgroundColor: '#ef535088', borderColor: '#ef5350',
+            borderWidth: 1, borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    } else {
+      document.getElementById(`fuel-monthly-box-${menuId}`)?.style && (document.getElementById(`fuel-monthly-box-${menuId}`).style.display = 'none');
+    }
+  }
+}
+
+function openFuelEntryModal(menuId, entryId = null) {
+  document.getElementById('fuel-menu-id').value          = menuId;
+  document.getElementById('fuel-entry-id').value         = entryId ?? '';
+  document.getElementById('fuel-del-btn').style.display  = entryId != null ? '' : 'none';
+  document.getElementById('fuel-modal-title').textContent = entryId != null ? '⛽ Editar carga' : '⛽ Registrar carga';
+
+  if (entryId != null) {
+    const e = getMenuTxs(menuId).find(t => t.id === entryId);
+    if (!e) return;
+    document.getElementById('fuel-date').value              = e.date ?? '';
+    document.getElementById('fuel-time').value              = e.time ?? '';
+    document.getElementById('fuel-liters').value            = e.liters ?? '';
+    document.getElementById('fuel-price-per-liter').value   = e.pricePerLiter ?? '';
+    document.getElementById('fuel-total').value             = e.totalCost ? e.totalCost.toFixed(2) : '';
+    document.getElementById('fuel-odometer').value          = e.odometerKm > 0 ? e.odometerKm : '';
+    document.getElementById('fuel-type-sel').value          = e.fuelType ?? 'regular';
+    document.getElementById('fuel-station').value           = e.station ?? '';
+    document.getElementById('fuel-notes').value             = e.notes ?? '';
+  } else {
+    document.getElementById('fuel-date').value              = _nowDate();
+    document.getElementById('fuel-time').value              = _nowTime();
+    document.getElementById('fuel-liters').value            = '';
+    document.getElementById('fuel-price-per-liter').value   = '';
+    document.getElementById('fuel-total').value             = '';
+    document.getElementById('fuel-odometer').value          = '';
+    document.getElementById('fuel-type-sel').value          = 'regular';
+    document.getElementById('fuel-station').value           = '';
+    document.getElementById('fuel-notes').value             = '';
+  }
+  document.getElementById('fuel-modal').classList.add('open');
+}
+
+function closeFuelModal() {
+  document.getElementById('fuel-modal').classList.remove('open');
+}
+
+function updateFuelTotal() {
+  const liters = parseFloat(document.getElementById('fuel-liters').value) || 0;
+  const price  = parseFloat(document.getElementById('fuel-price-per-liter').value) || 0;
+  document.getElementById('fuel-total').value = liters > 0 && price > 0
+    ? (liters * price).toFixed(2) : '';
+}
+
+function saveFuelEntry() {
+  const menuId  = parseInt(document.getElementById('fuel-menu-id').value, 10);
+  const entryId = document.getElementById('fuel-entry-id').value;
+  const liters  = parseFloat(document.getElementById('fuel-liters').value);
+  const ppl     = parseFloat(document.getElementById('fuel-price-per-liter').value);
+
+  if (!liters || !ppl) { showToast('Ingresa litros y precio/litro', 'error'); return; }
+
+  const fields = {
+    date:          document.getElementById('fuel-date').value || _nowDate(),
+    time:          document.getElementById('fuel-time').value || '',
+    liters,
+    pricePerLiter: ppl,
+    totalCost:     parseFloat((liters * ppl).toFixed(4)),
+    odometerKm:    parseInt(document.getElementById('fuel-odometer').value, 10) || 0,
+    fuelType:      document.getElementById('fuel-type-sel').value || 'regular',
+    station:       document.getElementById('fuel-station').value.trim(),
+    notes:         document.getElementById('fuel-notes').value.trim(),
+  };
+
+  if (entryId) {
+    updateMenuTx(menuId, parseInt(entryId, 10), fields);
+  } else {
+    addMenuTx(menuId, fields);
+  }
+
+  scheduleSave();
+  closeFuelModal();
+  renderFuelMenu(menuId);
+  showToast('Carga guardada ✓');
+}
+
+function confirmDeleteFuelEntry() {
+  const menuId  = parseInt(document.getElementById('fuel-menu-id').value, 10);
+  const entryId = parseInt(document.getElementById('fuel-entry-id').value, 10);
+  showConfirm('¿Eliminar este registro de carga?', () => {
+    deleteMenuTx(menuId, entryId);
+    scheduleSave();
+    closeFuelModal();
+    renderFuelMenu(menuId);
+    showToast('Registro eliminado');
+  }, { icon: '🗑️', okLabel: 'Eliminar' });
 }

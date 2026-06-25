@@ -265,9 +265,18 @@
         <label>Nombre</label>
         <input id="menu-name" type="text" placeholder="Ej: Vacaciones" autocomplete="off">
       </div>
-      <div class="form-row">
+      <div class="form-row" style="position:relative">
         <label>Icono (emoji)</label>
-        <input id="menu-icon" type="text" placeholder="📋" maxlength="4">
+        <div style="display:flex;gap:6px">
+          <input id="menu-icon" type="text" placeholder="📋" maxlength="4" style="flex:1;font-size:1.3rem;text-align:center" readonly
+                 onclick="toggleEmojiPicker()">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEmojiPicker()" style="flex-shrink:0">😊</button>
+        </div>
+        <div id="emoji-picker" style="display:none;position:absolute;z-index:200;top:100%;left:0;right:0;
+             background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+             padding:10px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px #0006">
+          <div id="emoji-grid" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+        </div>
       </div>
     </div>
     <div class="form-row">
@@ -766,6 +775,69 @@
     <div class="confirm-actions">
       <button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
       <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── FUEL ENTRY MODAL ──────────────────────────────────── -->
+<div class="modal-overlay" id="fuel-modal">
+  <div class="modal" style="width:min(500px,96vw)">
+    <h3 id="fuel-modal-title">⛽ Registrar carga</h3>
+    <input type="hidden" id="fuel-menu-id">
+    <input type="hidden" id="fuel-entry-id">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Fecha</label>
+        <input id="fuel-date" type="date">
+      </div>
+      <div class="form-row">
+        <label>Hora</label>
+        <input id="fuel-time" type="time">
+      </div>
+      <div class="form-row">
+        <label>Litros cargados</label>
+        <input id="fuel-liters" type="number" min="0.01" step="0.01" placeholder="0.00"
+               oninput="updateFuelTotal()">
+      </div>
+      <div class="form-row">
+        <label>Precio / litro</label>
+        <input id="fuel-price-per-liter" type="number" min="0.001" step="0.001" placeholder="0.000"
+               oninput="updateFuelTotal()">
+      </div>
+      <div class="form-row">
+        <label>Total</label>
+        <input id="fuel-total" type="text" readonly placeholder="—"
+               style="background:var(--bg3);color:var(--accent);font-weight:600;cursor:default">
+      </div>
+      <div class="form-row">
+        <label>Km odómetro</label>
+        <input id="fuel-odometer" type="number" min="0" step="1" placeholder="Opcional">
+      </div>
+      <div class="form-row">
+        <label>Tipo combustible</label>
+        <select id="fuel-type-sel" style="background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px">
+          <option value="regular">🟢 Regular</option>
+          <option value="premium">🔵 Premium</option>
+          <option value="diesel">🟡 Diésel</option>
+          <option value="glp">🟠 GLP</option>
+          <option value="electric">⚡ Eléctrico</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Gasolinera</label>
+        <input id="fuel-station" type="text" placeholder="Nombre de la estación">
+      </div>
+      <div class="form-row" style="grid-column:1/-1">
+        <label>Notas</label>
+        <textarea id="fuel-notes" rows="2" placeholder="Opcional…"
+                  style="background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:.85rem;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="fuel-del-btn" style="display:none;margin-right:auto"
+              onclick="confirmDeleteFuelEntry()">🗑 Eliminar</button>
+      <button class="btn btn-ghost"   onclick="closeFuelModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveFuelEntry()">Guardar</button>
     </div>
   </div>
 </div>
