@@ -1118,7 +1118,7 @@ function renderFuelMenu(menuId) {
   // Destroy existing fuel charts
   for (const key of ['fuel_price', 'fuel_cons', 'fuel_monthly']) {
     const k = `${menuId}_${key}`;
-    if (_charts[k]) { _charts[k].destroy(); delete _charts[k]; }
+    if (_menuCharts[k]) { _menuCharts[k].destroy(); delete _menuCharts[k]; }
   }
 
   const allEntries   = getMenuTxs(menuId).filter(e => !e._deleted);
@@ -1258,7 +1258,7 @@ function _renderFuelCharts(menuId, allEntries, odomSorted, consMap, curr) {
   const priceCanv = document.getElementById(`fuel-chart-price-${menuId}`);
   if (priceCanv) {
     if (priceEntries.length > 1) {
-      _charts[`${menuId}_fuel_price`] = new Chart(priceCanv, {
+      _menuCharts[`${menuId}_fuel_price`] = new Chart(priceCanv, {
         type: 'line',
         data: {
           labels: priceEntries.map(e => e.date),
@@ -1285,7 +1285,7 @@ function _renderFuelCharts(menuId, allEntries, odomSorted, consMap, curr) {
   const consCanv = document.getElementById(`fuel-chart-cons-${menuId}`);
   if (consCanv) {
     if (consEntries.length > 1) {
-      _charts[`${menuId}_fuel_cons`] = new Chart(consCanv, {
+      _menuCharts[`${menuId}_fuel_cons`] = new Chart(consCanv, {
         type: 'line',
         data: {
           labels: consEntries.map(e => e.date),
@@ -1317,7 +1317,7 @@ function _renderFuelCharts(menuId, allEntries, odomSorted, consMap, curr) {
   const monthCanv = document.getElementById(`fuel-chart-monthly-${menuId}`);
   if (monthCanv) {
     if (monthKeys.length > 0) {
-      _charts[`${menuId}_fuel_monthly`] = new Chart(monthCanv, {
+      _menuCharts[`${menuId}_fuel_monthly`] = new Chart(monthCanv, {
         type: 'bar',
         data: {
           labels: monthKeys,
