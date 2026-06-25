@@ -1409,9 +1409,9 @@ function saveFuelEntry() {
     addMenuTx(menuId, fields);
   }
 
-  scheduleSave();
   closeFuelModal();
   renderFuelMenu(menuId);
+  onMenuSaved(menuId).catch(() => {});
   showToast('Carga guardada ✓');
 }
 
@@ -1420,9 +1420,9 @@ function confirmDeleteFuelEntry() {
   const entryId = parseInt(document.getElementById('fuel-entry-id').value, 10);
   showConfirm('¿Eliminar este registro de carga?', () => {
     deleteMenuTx(menuId, entryId);
-    scheduleSave();
     closeFuelModal();
     renderFuelMenu(menuId);
+    onMenuSaved(menuId).catch(() => {});
     showToast('Registro eliminado');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }
