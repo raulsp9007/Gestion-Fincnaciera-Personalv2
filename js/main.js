@@ -82,14 +82,19 @@ let _deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _deferredPrompt = e;
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = '';
+  ['btn-install','admin-sheet-install'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
 });
 
 window.addEventListener('appinstalled', () => {
   _deferredPrompt = null;
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = 'none';
+  ['btn-install','admin-sheet-install'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  showToast('App instalada correctamente', 'var(--green)');
 });
 
 async function installPwa() {
@@ -97,10 +102,202 @@ async function installPwa() {
   _deferredPrompt.prompt();
   const { outcome } = await _deferredPrompt.userChoice;
   _deferredPrompt = null;
-  if (outcome === 'accepted') {
-    const btn = document.getElementById('btn-install');
-    if (btn) btn.style.display = 'none';
+  ['btn-install','admin-sheet-install'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
+// ── Swipe to close modals ─────────────────────────────────
+function _initSwipeClose() {
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    const modal = overlay.querySelector('.modal');
+    if (!modal) return;
+    let startY = 0, tracking = false;
+    modal.addEventListener('touchstart', e => {
+      const rect = modal.getBoundingClientRect();
+      const topZone = e.touches[0].clientY - rect.top < 60;
+      tracking = topZone && modal.scrollTop === 0;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    modal.addEventListener('touchend', e => {
+      if (tracking && e.changedTouches[0].clientY - startY > 80) {
+        overlay.classList.remove('open');
+      }
+      tracking = false;
+    }, { passive: true });
+  });
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    openGlobalSearch();
+  } else if (e.key === 'Escape') {
+    const open = document.querySelector('.modal-overlay.open');
+    if (open) open.classList.remove('open');
   }
+});
+
+// ── Global search ─────────────────────────────────────────
+let _searchTimer = null;
+
+function openGlobalSearch() {
+  const modal = document.getElementById('search-modal');
+  modal.classList.add('open');
+  const inp = document.getElementById('search-input');
+  inp.value = '';
+  document.getElementById('search-results').innerHTML =
+    '<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:24px">Escribe para buscar…</div>';
+  setTimeout(() => inp.focus(), 80);
+}
+
+function closeGlobalSearch() {
+  document.getElementById('search-modal').classList.remove('open');
+}
+
+function onGlobalSearch() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(_runGlobalSearch, 200);
+}
+
+function _runGlobalSearch() {
+  const q  = (document.getElementById('search-input').value ?? '').trim().toLowerCase();
+  const el = document.getElementById('search-results');
+  if (q.length < 2) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:24px">Escribe al menos 2 caracteres…</div>';
+    return;
+  }
+  const d      = loadData();
+  const groups = [];
+  const fmtAmt = (n, curr) =>
+    (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (curr ?? '');
+
+  for (const menu of (d.customMenus ?? [])) {
+    const isVehicle = menu.menuType === 'vehicle' || menu.menuType === 'fuel';
+    const hits = (menu.data ?? []).filter(tx => isVehicle
+      ? ((tx.station ?? '').toLowerCase().includes(q) ||
+         (tx.oilBrand ?? '').toLowerCase().includes(q) ||
+         (tx.notes ?? '').toLowerCase().includes(q))
+      : ((tx.description ?? '').toLowerCase().includes(q) ||
+         (tx.notes ?? '').toLowerCase().includes(q))
+    );
+    if (hits.length) groups.push({ label: `${esc(menu.icon ?? '📋')} ${esc(menu.name)}`, viewId: 'menu-' + menu.id, hits, curr: menu.currency ?? '€', type: isVehicle ? 'vehicle' : 'menu' });
+  }
+  const dHits = (d.deudas ?? []).filter(de =>
+    (de.persona ?? '').toLowerCase().includes(q) || (de.description ?? '').toLowerCase().includes(q)
+  );
+  if (dHits.length) groups.push({ label: '💳 Deudas', viewId: 'deudas', hits: dHits, curr: '$', type: 'deuda' });
+
+  for (const sm of (d.sharedDeudasMenus ?? [])) {
+    const hits = (sm.data ?? []).filter(de =>
+      (de.persona ?? '').toLowerCase().includes(q) || (de.description ?? '').toLowerCase().includes(q)
+    );
+    if (hits.length) groups.push({ label: `💳 ${esc(sm.name)}`, viewId: 'sdeudas-' + sm.id, hits, curr: '$', type: 'deuda' });
+  }
+
+  if (!groups.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:24px">Sin resultados</div>';
+    return;
+  }
+
+  el.innerHTML = groups.map(g => `
+    <div style="margin-bottom:14px">
+      <div style="font-size:.68rem;font-weight:700;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;padding:0 2px">${g.label} · ${g.hits.length} resultado(s)</div>
+      ${g.hits.slice(0, 8).map(h => {
+        const onclick = `closeGlobalSearch();switchView('${g.viewId}')`;
+        if (g.type === 'vehicle') {
+          const emoji = h.entryType === 'oil' ? '🛢️' : '⛽';
+          const label = h.entryType === 'oil' ? (h.oilBrand || 'Cambio aceite') : (h.station || 'Carga');
+          return `<div onclick="${onclick}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:8px;margin-bottom:4px;cursor:pointer;gap:8px">
+            <div style="min-width:0;display:flex;align-items:center;gap:6px">
+              <span>${emoji}</span>
+              <div>
+                <div style="font-size:.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</div>
+                <div style="font-size:.7rem;color:var(--text2)">${h.date?.slice(0,10) ?? ''}</div>
+              </div>
+            </div>
+            <span style="font-weight:700;font-size:.82rem;color:var(--red);white-space:nowrap;flex-shrink:0">${fmtAmt(h.totalCost, g.curr)}</span>
+          </div>`;
+        } else if (g.type === 'menu') {
+          const color = h.type === 'inc' ? 'var(--green)' : 'var(--red)';
+          const sign  = h.type === 'inc' ? '+' : '-';
+          return `<div onclick="${onclick}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:8px;margin-bottom:4px;cursor:pointer;gap:8px">
+            <div style="min-width:0">
+              <div style="font-size:.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.description)}</div>
+              <div style="font-size:.7rem;color:var(--text2)">${h.date?.slice(0,10) ?? ''}</div>
+            </div>
+            <span style="font-weight:700;font-size:.82rem;color:${color};white-space:nowrap;flex-shrink:0">${sign}${fmtAmt(h.amount, g.curr)}</span>
+          </div>`;
+        } else {
+          return `<div onclick="${onclick}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:8px;margin-bottom:4px;cursor:pointer;gap:8px">
+            <div style="min-width:0">
+              <div style="font-size:.85rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.persona)}</div>
+              <div style="font-size:.7rem;color:var(--text2)">${esc(h.description ?? '')} · ${h.date?.slice(0,10) ?? ''}</div>
+            </div>
+            <span style="font-weight:700;font-size:.82rem;white-space:nowrap;flex-shrink:0">${fmtAmt(h.amount, h.currency ?? '$')}</span>
+          </div>`;
+        }
+      }).join('')}
+      ${g.hits.length > 8 ? `<div style="font-size:.72rem;color:var(--text2);padding:2px 4px">+${g.hits.length - 8} más…</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ── Change history log ────────────────────────────────────
+const _HIST_KEY = 'cashmap_v2_history';
+let   _histMenuId = null;
+
+function _logHistory({ menuId, menuName, action, desc, amount, txType }) {
+  try {
+    const log = JSON.parse(localStorage.getItem(_HIST_KEY) ?? '[]');
+    log.unshift({ ts: new Date().toISOString(), by: currentUser?.name ?? '?', menuId, menuName, action, desc, amount, txType });
+    if (log.length > 200) log.length = 200;
+    localStorage.setItem(_HIST_KEY, JSON.stringify(log));
+  } catch {}
+}
+
+function openMenuHistory(menuId) {
+  _histMenuId = menuId ?? null;
+  const all     = JSON.parse(localStorage.getItem(_HIST_KEY) ?? '[]');
+  const entries = menuId != null ? all.filter(e => e.menuId === menuId) : all;
+  const menu    = menuId != null && typeof getCustomMenu === 'function' ? getCustomMenu(menuId) : null;
+  document.getElementById('history-modal-title').textContent =
+    menu ? `📋 Historial — ${menu.icon ?? ''} ${menu.name}` : '📋 Historial de cambios';
+
+  if (!entries.length) {
+    document.getElementById('history-modal-list').innerHTML =
+      '<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:24px">Sin cambios registrados</div>';
+  } else {
+    document.getElementById('history-modal-list').innerHTML = entries.slice(0, 100).map(e => {
+      const ico   = e.action === 'create' ? '➕' : e.action === 'edit' ? '✏️' : '🗑️';
+      const color = e.txType === 'inc' ? 'var(--green)' : e.txType === 'exp' ? 'var(--red)' : 'var(--text2)';
+      const dt    = new Date(e.ts).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:.9rem;flex-shrink:0;margin-top:1px">${ico}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.83rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.desc ?? '—')}</div>
+          <div style="font-size:.7rem;color:var(--text2)">${esc(e.by)} · ${dt}${e.menuName ? ' · ' + esc(e.menuName) : ''}</div>
+        </div>
+        ${e.amount != null ? `<span style="font-size:.8rem;font-weight:600;color:${color};white-space:nowrap;flex-shrink:0">${(e.amount ?? 0).toFixed(2)}</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('history-modal').classList.add('open');
+}
+
+function clearMenuHistory() {
+  try {
+    if (_histMenuId != null) {
+      const all = JSON.parse(localStorage.getItem(_HIST_KEY) ?? '[]');
+      localStorage.setItem(_HIST_KEY, JSON.stringify(all.filter(e => e.menuId !== _histMenuId)));
+    } else {
+      localStorage.removeItem(_HIST_KEY);
+    }
+  } catch {}
+  document.getElementById('history-modal').classList.remove('open');
+  showToast('Historial borrado', 'var(--red)');
 }
 
 // ── Pantallas ─────────────────────────────────────────────
@@ -221,6 +418,7 @@ function startApp() {
   startAutosave();
 
   document.getElementById('app').classList.remove('hidden');
+  _initSwipeClose();
 }
 
 // ── Init ──────────────────────────────────────────────────

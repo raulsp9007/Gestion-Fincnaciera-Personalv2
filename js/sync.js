@@ -87,10 +87,19 @@ async function _pullSharedConfig() {
         currency: sm.currency ?? '€', data: [], nextDataId: 1,
         shared: true, sheetName: sm.sheetName,
         myRole: access?.role ?? 'admin', sharedWith: sm.sharedWith ?? [],
+        menuType: sm.menuType ?? 'normal',
+        vehicleInfo: sm.vehicleInfo ?? null,
         lastPulledAt: null
       });
       d.navOrder.push('menu-' + id);
       changed = true;
+    } else {
+      // Actualizar campos de metadata que pueden cambiar
+      if (sm.menuType && existing.menuType !== sm.menuType) { existing.menuType = sm.menuType; changed = true; }
+      if (sm.vehicleInfo !== undefined && JSON.stringify(existing.vehicleInfo) !== JSON.stringify(sm.vehicleInfo)) {
+        existing.vehicleInfo = sm.vehicleInfo;
+        changed = true;
+      }
     }
   }
 
@@ -207,7 +216,7 @@ async function pushDeleteToGas(menuId, txId) {
 async function pushSharedConfig() {
   const sharedMenus = getCustomMenus()
     .filter(m => m.shared && m.sheetName)
-    .map(m => ({ sheetName: m.sheetName, name: m.name, icon: m.icon, currency: m.currency, sharedWith: m.sharedWith ?? [] }));
+    .map(m => ({ sheetName: m.sheetName, name: m.name, icon: m.icon, currency: m.currency, sharedWith: m.sharedWith ?? [], menuType: m.menuType ?? 'normal', vehicleInfo: m.vehicleInfo ?? null }));
   await callGas('setConfig', { key: 'shared_menus', value: JSON.stringify(sharedMenus) });
 }
 
