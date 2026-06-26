@@ -225,6 +225,10 @@ async function forceSyncNow() {
   if (!getGasUrl()) { showToast('Configura la URL de GAS primero', 'var(--yellow)'); return; }
   try {
     await connectAndSync();
+    // Re-push shared config to ensure menuType/vehicleInfo reach other devices
+    if (getCustomMenus().some(m => m.shared && m.sheetName)) {
+      await pushSharedConfig();
+    }
     showToast('Sincronizado');
   } catch (e) {
     showToast('Error: ' + e.message, 'var(--red)');

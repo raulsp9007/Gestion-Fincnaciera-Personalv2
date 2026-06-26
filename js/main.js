@@ -108,6 +108,32 @@ async function installPwa() {
   });
 }
 
+function _initIosInstallBanner() {
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('cashmap_ios_banner_dismissed');
+  if (!isIos || isInStandalone || dismissed) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'ios-install-banner';
+  banner.style.cssText = `
+    position:fixed;bottom:0;left:0;right:0;z-index:9999;
+    background:var(--bg2);border-top:1px solid var(--border);
+    padding:12px 16px;display:flex;align-items:center;gap:10px;
+    box-shadow:0 -4px 20px #0004;
+  `;
+  banner.innerHTML = `
+    <span style="font-size:1.6rem">📲</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:.88rem">Instalar CashMap</div>
+      <div style="font-size:.75rem;color:var(--text2)">Toca <strong>Compartir</strong> → <strong>Agregar a pantalla de inicio</strong></div>
+    </div>
+    <button onclick="document.getElementById('ios-install-banner').remove();localStorage.setItem('cashmap_ios_banner_dismissed','1')"
+            style="flex-shrink:0;background:none;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:4px">✕</button>
+  `;
+  document.body.appendChild(banner);
+}
+
 // ── Swipe to close modals ─────────────────────────────────
 function _initSwipeClose() {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -419,6 +445,7 @@ function startApp() {
 
   document.getElementById('app').classList.remove('hidden');
   _initSwipeClose();
+  _initIosInstallBanner();
 }
 
 // ── Init ──────────────────────────────────────────────────

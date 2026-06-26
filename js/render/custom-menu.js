@@ -1583,6 +1583,8 @@ function saveVehicleInfo() {
   };
   updateCustomMenu(menuId, { vehicleInfo });
   onMenuSaved(menuId).catch(() => {});
+  const updatedMenu = getCustomMenu(menuId);
+  if (updatedMenu?.shared && typeof pushSharedConfig === 'function') pushSharedConfig().catch(() => {});
   closeVehicleInfoModal();
   renderVehicleMenu(menuId);
   showToast('Datos del vehículo guardados ✓');
