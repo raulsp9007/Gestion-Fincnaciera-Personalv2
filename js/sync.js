@@ -48,6 +48,10 @@ async function connectAndSync() {
   try {
     setSyncBadge('saving');
     await _pullSharedConfig();
+    // Admin re-pushes config to keep menuType/vehicleInfo in sync for other devices
+    if (currentUser.role === 'admin' && getCustomMenus().some(m => m.shared && m.sheetName)) {
+      await pushSharedConfig();
+    }
     await syncAllSharedMenus();
     await syncPrivateData();
     await syncSharedDeudas();
