@@ -176,6 +176,10 @@ function _buildDeudaMobileCard(d) {
         ${d.amount && d.status !== 'pagado' ? `
         <div style="height:3px;background:var(--bg3);border-radius:2px;margin-top:8px">
           <div style="height:100%;width:${pct}%;background:${typeColor};border-radius:2px;transition:width .3s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <div style="font-size:.7rem;color:${typeColor};font-weight:700">${pct}%</div>
+          <div style="font-size:.7rem;color:var(--text2)">Restante: ${_fmtDeuda(deudaRemaining(d), d.currency ?? '$')}</div>
         </div>` : ''}
       </div>
     </td>
