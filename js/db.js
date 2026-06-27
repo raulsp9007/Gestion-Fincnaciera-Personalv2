@@ -40,7 +40,17 @@ function _nowYM() {
   return _nowDate().slice(0, 7);
 }
 function _nowTime() {
-  return new Date().toLocaleTimeString('en-GB', { timeZone: getTimezone(), hour: '2-digit', minute: '2-digit', hour12: false });
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: getTimezone(), hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(new Date());
+    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10) % 24;
+    const m = parts.find(p => p.type === 'minute')?.value ?? '00';
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  } catch {
+    const now = new Date();
+    return String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  }
 }
 
 // ── Transactions — Inicio ─────────────────────────────────
