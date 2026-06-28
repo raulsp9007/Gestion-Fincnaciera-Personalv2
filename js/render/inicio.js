@@ -450,8 +450,10 @@ function _buildBudgetBars(txs) {
       </div>
       <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-top:3px">
         <span style="color:${col};font-weight:700">${pct}%</span>
-        ${pct < 100
-          ? `<span style="color:var(--text2)">Restante: ${fmtMoney(remaining)}</span>`
+        ${spent <= monthly
+          ? remaining > 0
+            ? `<span style="color:var(--text2)">Restante: ${fmtMoney(remaining)}</span>`
+            : `<span style="color:var(--red);font-weight:700">¡Límite alcanzado!</span>`
           : `<span style="color:var(--red);font-weight:700">⚠ Excedido ${fmtMoney(spent - monthly)}</span>`}
       </div>
     </div>`;

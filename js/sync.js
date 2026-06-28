@@ -356,7 +356,10 @@ async function _syncPrivateSheet(sheetName, dataKey) {
   const changed = _mergePrivateRows(d, dataKey, local, r.rows);
   if (changed) {
     saveData();
-    if (dataKey === 'inicio' && typeof renderInicio === 'function') renderInicio();
+    if (dataKey === 'inicio' && typeof renderInicio === 'function') {
+      if (typeof processRecurringTxs === 'function') processRecurringTxs();
+      renderInicio();
+    }
     if (dataKey === 'deudas' && typeof renderDeudas === 'function') renderDeudas();
   }
 }
