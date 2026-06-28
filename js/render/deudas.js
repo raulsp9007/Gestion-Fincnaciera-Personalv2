@@ -389,7 +389,7 @@ function saveDeuda() {
       const idx = arr.findIndex(x => x.id === parseInt(id, 10));
       if (idx >= 0) arr[idx] = { ...arr[idx], date, amount, persona, description: desc, type, status, notes, currency, updatedAt: now };
     } else {
-      const nextId = arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1;
+      const nextId = Math.max(Date.now(), arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1);
       arr.push({ id: nextId, date, amount, persona, description: desc, type, status, notes, currency, paid: 0, payments: [], updatedAt: now });
     }
   });

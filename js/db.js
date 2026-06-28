@@ -65,7 +65,7 @@ function getTxsForMonth(ym) {
 function addTx(fields) {
   const d   = loadData();
   const txs = d.inicio;
-  const id  = txs.length ? Math.max(...txs.map(t => t.id)) + 1 : 1;
+  const id  = Math.max(Date.now(), txs.length ? Math.max(...txs.map(t => t.id)) + 1 : 1);
   const tx  = { id, ...fields, updatedAt: new Date().toISOString() };
   txs.push(tx);
   saveData();
@@ -422,7 +422,7 @@ function processRecurringTxs() {
                   x.description === desc && x.amount === amount && x.type === type);
 
   // Inicio txs
-  let nextTxId = d.inicio.length ? Math.max(...d.inicio.map(t => t.id)) + 1 : 1;
+  let nextTxId = Math.max(Date.now(), d.inicio.length ? Math.max(...d.inicio.map(t => t.id)) + 1 : 1);
   d.inicio.filter(t => t.recurring && t.recurringNext).forEach(t => {
     while (t.recurringNext && t.recurringNext <= today) {
       const due = t.recurringNext;
