@@ -123,7 +123,7 @@ function _setConfig({ key, value }) {
 
 // ── Sheets de datos de menú ───────────────────────────────
 const DATA_HEADERS = [
-  'id', 'date', 'amount', 'description',
+  'id', 'date', 'time', 'amount', 'description',
   'type', 'category', 'notes',
   'updatedAt', 'updatedBy', 'deleted'
 ];
@@ -134,11 +134,23 @@ function _ensureSheet(ss, sheetName) {
     sheet = ss.insertSheet(sheetName);
     sheet.appendRow(DATA_HEADERS);
     sheet.setFrozenRows(1);
-    // Estilo de encabezado
     sheet.getRange(1, 1, 1, DATA_HEADERS.length)
          .setBackground('#1e293b')
          .setFontColor('#94a3b8')
          .setFontWeight('bold');
+  } else {
+    // Migración: añadir columnas faltantes al final del sheet
+    const lastCol  = sheet.getLastColumn();
+    const existing = lastCol > 0
+      ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String)
+      : [];
+    let col = existing.length + 1;
+    for (const h of DATA_HEADERS) {
+      if (!existing.includes(h)) {
+        sheet.getRange(1, col).setValue(h);
+        col++;
+      }
+    }
   }
   return sheet;
 }
@@ -191,14 +203,15 @@ function _pushRows({ sheetName, rows }) {
 
   let upserted = 0;
   for (const row of rows) {
-    const rowArr = DATA_HEADERS.map(h => {
+    // Usar headers reales del sheet para respetar columnas existentes y futuras
+    const rowArr = headers.map(h => {
       const v = row[h];
       return (v === null || v === undefined) ? '' : v;
     });
     const key = String(row.id);
 
     if (idMap[key]) {
-      sheet.getRange(idMap[key], 1, 1, DATA_HEADERS.length).setValues([rowArr]);
+      sheet.getRange(idMap[key], 1, 1, headers.length).setValues([rowArr]);
     } else {
       sheet.appendRow(rowArr);
       idMap[key] = sheet.getLastRow();
