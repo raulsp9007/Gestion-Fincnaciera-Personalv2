@@ -437,7 +437,12 @@ function startApp() {
   try { migrateTypes(); } catch (e) { console.error('migrateTypes:', e); }
   buildNav();
   switchView('inicio');
-  try { processRecurringTxs(); } catch (e) { console.error('processRecurringTxs:', e); }
+  try {
+    const affectedMenus = processRecurringTxs();
+    if (affectedMenus?.length && typeof onMenuSaved === 'function') {
+      affectedMenus.forEach(id => onMenuSaved(id).catch(() => {}));
+    }
+  } catch (e) { console.error('processRecurringTxs:', e); }
   renderInicio();
   applyGasIdentity(); // restaura GAS URL desde identidad guardada antes de startSync
   startSync();

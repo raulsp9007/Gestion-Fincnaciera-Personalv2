@@ -436,7 +436,9 @@ function processRecurringTxs() {
   });
 
   // Custom menu txs
+  const affectedMenuIds = [];
   for (const m of d.customMenus) {
+    let menuChanged = false;
     m.data.filter(t => t.recurring && t.recurringNext).forEach(t => {
       while (t.recurringNext && t.recurringNext <= today) {
         const due = t.recurringNext;
@@ -444,13 +446,16 @@ function processRecurringTxs() {
           const { recurringNext: _rn, ...base } = t;
           m.data.push({ ...base, id: m.nextDataId++, date: due, updatedAt: now });
           changed = true;
+          menuChanged = true;
         }
         t.recurringNext = nextOccurrence(due, t.recurring);
       }
     });
+    if (menuChanged) affectedMenuIds.push(m.id);
   }
 
   if (changed) saveData();
+  return affectedMenuIds;
 }
 
 // ── Import transactions into a specific menu ──────────────

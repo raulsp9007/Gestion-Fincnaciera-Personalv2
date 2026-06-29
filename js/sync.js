@@ -357,7 +357,10 @@ async function _syncPrivateSheet(sheetName, dataKey) {
   if (changed) {
     saveData();
     if (dataKey === 'inicio' && typeof renderInicio === 'function') {
-      if (typeof processRecurringTxs === 'function') processRecurringTxs();
+      if (typeof processRecurringTxs === 'function') {
+        const affectedMenus = processRecurringTxs();
+        if (affectedMenus?.length) affectedMenus.forEach(id => onMenuSaved(id).catch(() => {}));
+      }
       renderInicio();
     }
     if (dataKey === 'deudas' && typeof renderDeudas === 'function') renderDeudas();
