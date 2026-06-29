@@ -203,6 +203,7 @@ function renderCustomMenu(menuId) {
         ` : ''}
         <button class="btn btn-ghost btn-sm" onclick="generateMenuReport(${menuId})">📊 Reporte</button>
         ${menu.shared ? `<button class="btn btn-ghost btn-sm" onclick="openMenuHistory(${menuId})">📋 Historial</button>` : ''}
+        ${menu.shared ? `<button class="btn btn-ghost btn-sm" title="Fuerza push+pull completo de todos los registros" onclick="forceFullMenuSync(${menuId})">↺ Sync</button>` : ''}
       </div>
     </div>
     ${_menuMonthTabs(menuId, ym)}

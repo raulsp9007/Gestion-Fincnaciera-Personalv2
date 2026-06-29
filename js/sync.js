@@ -224,6 +224,30 @@ async function pushSharedConfig() {
   await callGas('setConfig', { key: 'shared_menus', value: JSON.stringify(sharedMenus) });
 }
 
+// ── Full sync de un menú compartido (push todo + pull todo) ──
+async function forceFullMenuSync(menuId) {
+  const menu = getCustomMenu(menuId);
+  if (!menu?.shared || !menu.sheetName || !getGasUrl()) return;
+  try {
+    setSyncBadge('saving');
+    showToast('Sincronizando…', 'var(--text2)');
+    // 1. Subir TODOS los registros locales (incluyendo campo time)
+    await pushMenuToGas(menuId);
+    // 2. Bajar TODOS los registros sin filtro de fecha
+    const r = await callGas('pullRows', { sheetName: menu.sheetName });
+    if (r.rows?.length) {
+      mergeMenuRows(menuId, r.rows);
+      setMenuLastPulled(menuId, r.pulledAt);
+    }
+    setSyncBadge('ok');
+    if (typeof renderCustomMenu === 'function') renderCustomMenu(menuId);
+    showToast('Sync completo ✓');
+  } catch (e) {
+    setSyncBadge('error');
+    showToast('Error sync: ' + e.message, 'var(--red)');
+  }
+}
+
 // ── Manual sync button ────────────────────────────────────
 async function forceSyncNow() {
   if (!getGasUrl()) { showToast('Configura la URL de GAS primero', 'var(--yellow)'); return; }
