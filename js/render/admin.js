@@ -592,7 +592,8 @@ function _renderBudgetsList() {
     const hasBudget = !!monthly;
     const pct       = hasBudget ? Math.min(100, Math.round((spent / monthly) * 100)) : 0;
     const col       = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
-    const remaining = hasBudget ? Math.max(0, monthly - spent) : 0;
+    const excedido  = hasBudget ? Math.round((spent - monthly) * 100) / 100 : 0;
+    const remaining = hasBudget ? Math.max(0, Math.round((monthly - spent) * 100) / 100) : 0;
 
     const progressHtml = hasBudget ? `
       <div style="margin-top:6px">
@@ -601,9 +602,11 @@ function _renderBudgetsList() {
         </div>
         <div style="display:flex;justify-content:space-between;font-size:.68rem;margin-top:2px">
           <span style="color:${col};font-weight:700">${pct}%  gastado: ${fmtMoney(spent)}</span>
-          ${pct < 100
-            ? `<span style="color:var(--text2)">Restante: ${fmtMoney(remaining)}</span>`
-            : `<span style="color:var(--red);font-weight:700">⚠ Excedido ${fmtMoney(spent - monthly)}</span>`}
+          ${excedido > 0
+            ? `<span style="color:var(--red);font-weight:700">⚠ Excedido ${fmtMoney(excedido)}</span>`
+            : remaining > 0
+              ? `<span style="color:var(--text2)">Restante: ${fmtMoney(remaining)}</span>`
+              : `<span style="color:var(--red);font-weight:700">¡Límite alcanzado!</span>`}
         </div>
       </div>` : (spent > 0 ? `<div style="font-size:.68rem;color:var(--text2);margin-top:4px">Gastado este mes: ${fmtMoney(spent)}</div>` : '');
 

@@ -281,7 +281,8 @@ function _menuBudgetSection(monthTxs, cats, curr, menuId, sec) {
     if (!spent && !monthly) return '';
     const pct       = Math.min(100, Math.round((spent / monthly) * 100));
     const col       = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--green)';
-    const remaining = Math.max(0, monthly - spent);
+    const excedido  = Math.round((spent - monthly) * 100) / 100;
+    const remaining = Math.max(0, Math.round((monthly - spent) * 100) / 100);
     return `<div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:4px">
         <span style="display:flex;align-items:center;gap:5px">
@@ -293,9 +294,11 @@ function _menuBudgetSection(monthTxs, cats, curr, menuId, sec) {
       <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s"></div>
       </div>
-      ${pct >= 100
-        ? `<div style="font-size:.68rem;color:var(--red);margin-top:2px">⚠ Excedido ${_fmtCurr(spent - monthly, curr)}</div>`
-        : `<div style="font-size:.68rem;color:var(--text2);margin-top:2px">${pct}% · Restante ${_fmtCurr(remaining, curr)}</div>`}
+      ${excedido > 0
+        ? `<div style="font-size:.68rem;color:var(--red);margin-top:2px">⚠ Excedido ${_fmtCurr(excedido, curr)}</div>`
+        : remaining > 0
+          ? `<div style="font-size:.68rem;color:var(--text2);margin-top:2px">${pct}% · Restante ${_fmtCurr(remaining, curr)}</div>`
+          : `<div style="font-size:.68rem;color:var(--red);margin-top:2px">¡Límite alcanzado!</div>`}
     </div>`;
   }).filter(Boolean).join('');
 
