@@ -208,7 +208,7 @@ function mergeMenuRows(menuId, remoteRows) {
 }
 
 function _gasRowToTx(row) {
-  return {
+  const tx = {
     id:          parseInt(row.id, 10),
     date:        String(row.date || '').slice(0, 10),
     amount:      parseFloat(row.amount) || 0,
@@ -218,6 +218,10 @@ function _gasRowToTx(row) {
     notes:       String(row.notes || ''),
     updatedAt:   String(row.updatedAt || '')
   };
+  if (row.time)          tx.time          = String(row.time);
+  if (row.recurring)     tx.recurring     = String(row.recurring);
+  if (row.recurringNext) tx.recurringNext = String(row.recurringNext);
+  return tx;
 }
 
 // ── Shared Deudas Menus ───────────────────────────────────

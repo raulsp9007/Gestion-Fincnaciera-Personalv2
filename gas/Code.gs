@@ -125,6 +125,7 @@ function _setConfig({ key, value }) {
 const DATA_HEADERS = [
   'id', 'date', 'time', 'amount', 'description',
   'type', 'category', 'notes',
+  'recurring', 'recurringNext',
   'updatedAt', 'updatedBy', 'deleted'
 ];
 
