@@ -129,6 +129,10 @@ const DATA_HEADERS = [
   'updatedAt', 'updatedBy', 'deleted'
 ];
 
+// Columnas que deben forzarse a texto plano para que Sheets no las
+// autoconvierta en objetos Date/hora (bug clásico al escribir "23:09" o fechas).
+const _TEXT_COLUMNS = ['date', 'time', 'recurringNext'];
+
 function _ensureSheet(ss, sheetName) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) {
@@ -139,6 +143,7 @@ function _ensureSheet(ss, sheetName) {
          .setBackground('#1e293b')
          .setFontColor('#94a3b8')
          .setFontWeight('bold');
+    _forceTextColumns(sheet, DATA_HEADERS);
   } else {
     // Migración: añadir columnas faltantes al final del sheet
     const lastCol  = sheet.getLastColumn();
@@ -152,8 +157,19 @@ function _ensureSheet(ss, sheetName) {
         col++;
       }
     }
+    const headersAfter = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+    _forceTextColumns(sheet, headersAfter);
   }
   return sheet;
+}
+
+function _forceTextColumns(sheet, headers) {
+  const maxRows = Math.max(sheet.getMaxRows(), 1000);
+  headers.forEach((h, idx) => {
+    if (_TEXT_COLUMNS.includes(h)) {
+      sheet.getRange(1, idx + 1, maxRows, 1).setNumberFormat('@');
+    }
+  });
 }
 
 // Devuelve filas modificadas después de `since` (ISO string).
@@ -172,16 +188,26 @@ function _pullRows({ sheetName, since }) {
   const sinceTs = since ? new Date(since).getTime() : 0;
   const rows    = [];
 
+  const tz = ss.getSpreadsheetTimeZone();
   for (let i = 1; i < data.length; i++) {
     const row = {};
     for (let j = 0; j < headers.length; j++) {
-      row[headers[j]] = data[i][j];
+      row[headers[j]] = _normalizeCell(headers[j], data[i][j], tz);
     }
     const rowTs = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
     if (!since || rowTs > sinceTs) rows.push(row);
   }
 
   return { ok: true, rows, pulledAt: new Date().toISOString() };
+}
+
+// Sheets a veces autoconvierte celdas de texto tipo "23:09" o "2026-06-30"
+// en objetos Date (bug de auto-formato). Normaliza de vuelta a string plano.
+function _normalizeCell(header, value, tz) {
+  if (!(value instanceof Date)) return value;
+  if (header === 'time') return Utilities.formatDate(value, tz, 'HH:mm');
+  if (header === 'date' || header === 'recurringNext') return Utilities.formatDate(value, tz, 'yyyy-MM-dd');
+  return value.toISOString();
 }
 
 // Upsert de filas por id.
