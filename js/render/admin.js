@@ -7,6 +7,7 @@ function openAdminPanel() {
   renderAutosaveSection();
   renderSharedDeudasAdmin();
   _renderTimezoneSection();
+  _renderTimeFormatSection();
   _renderAdminMenusList();
   document.getElementById('admin-modal').classList.add('open');
   switchAdminTab('usuarios');
@@ -67,6 +68,23 @@ function _renderTimezoneSection() {
 function saveTimezone(tz) {
   setTimezone(tz);
   showToast('Zona horaria guardada');
+}
+
+function _renderTimeFormatSection() {
+  const sel = document.getElementById('admin-timeformat-sel');
+  if (!sel) return;
+  sel.value = getTimeFormat();
+}
+
+function saveTimeFormat(fmt) {
+  setTimeFormat(fmt);
+  showToast('Formato de hora guardado');
+  // Re-render vista actual para reflejar el cambio inmediatamente
+  const currentView = document.querySelector('.view.active')?.id;
+  if (currentView === 'view-inicio' && typeof renderInicio === 'function') renderInicio();
+  if (currentView === 'view-custom' && typeof _currentView !== 'undefined' && _currentView.startsWith('menu-')) {
+    renderCustomMenu(parseInt(_currentView.slice(5), 10));
+  }
 }
 
 function switchAdminTab(id) {

@@ -33,6 +33,28 @@ function setTimezone(tz) {
   saveData();
   if (typeof scheduleSave === 'function') scheduleSave();
 }
+
+// ── Time format helpers (12h / 24h) ───────────────────────
+function getTimeFormat() {
+  return loadData().config?.timeFormat || '24h';
+}
+function setTimeFormat(fmt) {
+  const d = loadData();
+  if (!d.config) d.config = {};
+  d.config.timeFormat = fmt;
+  saveData();
+  if (typeof scheduleSave === 'function') scheduleSave();
+}
+// Convierte "HH:mm" (24h, como se guarda internamente) al formato elegido para mostrar
+function fmtTime(timeStr) {
+  if (!timeStr) return '';
+  if (getTimeFormat() !== '12h') return timeStr;
+  const [h, m] = timeStr.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12    = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
 function _nowDate() {
   return new Date().toLocaleDateString('en-CA', { timeZone: getTimezone() });
 }

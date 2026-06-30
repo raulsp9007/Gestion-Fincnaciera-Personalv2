@@ -465,6 +465,15 @@
           Afecta fechas por defecto en nuevos registros y organización de meses.
         </p>
 
+        <div class="section-title">Formato de hora</div>
+        <select id="admin-timeformat-sel" class="input" style="max-width:320px" onchange="saveTimeFormat(this.value)">
+          <option value="24h">24 horas (ej. 23:09)</option>
+          <option value="12h">12 horas (ej. 11:09 PM)</option>
+        </select>
+        <p style="font-size:.72rem;color:var(--text2);margin:6px 0 16px">
+          Afecta cómo se muestra la hora en todos los registros.
+        </p>
+
         <div class="section-title">Exportar</div>
         <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 Exportar JSON completo</button>
         <p style="font-size:.72rem;color:var(--text2);margin:6px 0 16px">

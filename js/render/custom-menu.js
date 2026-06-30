@@ -718,7 +718,7 @@ function _menuTxRow(menu, tx, cats, curr, visibleCols) {
 
   const cellFor = key => {
     switch (key) {
-      case 'fecha': return `<td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${tx.time}</span>` : ''}</td>`;
+      case 'fecha': return `<td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${fmtTime(tx.time)}</span>` : ''}</td>`;
       case 'monto': return `<td class="amount ${tx.type}" style="white-space:nowrap">${sign}${_fmtCurr(tx.amount, curr)}</td>`;
       case 'desc':  return `<td style="font-weight:500">${esc(tx.description)} ${attachBadge(tx.attachments)}${tx.recurring ? `<br>${_recBadge(tx)}` : ''}</td>`;
       case 'tipo':  return `<td><span class="badge ${tx.type}">${typeLabel}</span></td>`;
@@ -1288,7 +1288,7 @@ function _renderFuelHistory(menuId, entries, consMap, curr) {
         <div style="font-size:1.3rem;min-width:28px;text-align:center">${emoji}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:.88rem">${esc(e.station || 'Gasolinera')}</div>
-          <div style="font-size:.75rem;color:var(--text2)">${e.date}${e.time ? ' ' + e.time : ''}${e.odometerKm > 0 ? ' · ' + e.odometerKm.toLocaleString() + ' km' : ''}</div>
+          <div style="font-size:.75rem;color:var(--text2)">${e.date}${e.time ? ' ' + fmtTime(e.time) : ''}${e.odometerKm > 0 ? ' · ' + e.odometerKm.toLocaleString() + ' km' : ''}</div>
           ${cons ? `<div style="font-size:.72rem;color:var(--green);margin-top:2px">🚗 ${cons.toFixed(2)} km/L</div>` : ''}
           ${e.notes ? `<div style="font-size:.72rem;color:var(--text2);margin-top:2px">${esc(e.notes)}</div>` : ''}
         </div>

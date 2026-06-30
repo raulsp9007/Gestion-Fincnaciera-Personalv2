@@ -259,7 +259,7 @@ function _buildTxRow(tx, cats) {
   const sign      = tx.type === 'inc' ? '+' : '-';
 
   return `<tr>
-    <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${tx.time}</span>` : ''}</td>
+    <td style="color:var(--text2);white-space:nowrap">${fmtDate(tx.date)}${tx.time ? `<br><span style="font-size:.68rem;opacity:.7">${fmtTime(tx.time)}</span>` : ''}</td>
     <td class="amount ${tx.type}" style="white-space:nowrap">
       ${sign}${fmtMoney(tx.amount)}${_recBadge(tx)}
     </td>
