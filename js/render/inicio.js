@@ -76,6 +76,8 @@ function _buildOverviewCard(menu, cats) {
   const exp  = txs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
   const bal  = inc - exp;
   const curr = menu.currency ?? '';
+  const carryover = carryoverBalance(menu.data ?? [], _inicioMonth);
+  const totalBal   = carryover + bal;
 
   return `
     <div class="overview-card" onclick="switchView('menu-${menu.id}')" style="cursor:pointer">
@@ -100,6 +102,10 @@ function _buildOverviewCard(menu, cats) {
           </div>
         </div>
       </div>
+      ${carryover !== 0 ? `<div style="font-size:.72rem;color:var(--text2);margin:-6px 0 8px" title="Saldo arrastrado: ${curr}${_fmtNum(carryover)}">
+        Saldo total: <strong style="color:${totalBal >= 0 ? 'var(--green)' : 'var(--red)'}">${curr}${_fmtNum(totalBal)}</strong>
+        (arrastrado: ${curr}${_fmtNum(carryover)})
+      </div>` : ''}
       <div class="ovc-charts">
         <div class="ovc-chart-col">
           <div class="ovc-chart-label">♥ Ingresos por cat.</div>

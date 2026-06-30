@@ -139,6 +139,8 @@ function renderCustomMenu(menuId) {
   const inc = monthTxs.filter(t => t.type === 'inc').reduce((s, t) => s + t.amount, 0);
   const exp = monthTxs.filter(t => t.type === 'exp').reduce((s, t) => s + t.amount, 0);
   const bal = inc - exp;
+  const carryover = carryoverBalance(allTxs, ym);
+  const totalBal   = carryover + bal;
 
   // 4th card
   const thisYM = _nowYM();
@@ -212,6 +214,11 @@ function renderCustomMenu(menuId) {
       <div class="card red"><div class="label">Gastos</div><div class="value">${_fmtCurr(exp, curr)}</div></div>
       <div class="card ${bal >= 0 ? 'blue' : 'red'}"><div class="label">Balance</div><div class="value">${_fmtCurr(bal, curr)}</div></div>
       ${fourthCard}
+      <div class="card ${totalBal >= 0 ? 'blue' : 'red'}" title="Incluye saldo arrastrado de meses anteriores: ${_fmtCurr(carryover, curr)}">
+        <div class="label">Saldo total</div>
+        <div class="value">${_fmtCurr(totalBal, curr)}</div>
+        <div style="font-size:.7rem;color:var(--text2);margin-top:2px">arrastrado: ${_fmtCurr(carryover, curr)}</div>
+      </div>
     </div>
     ${hiddenBar}
     <div class="charts">

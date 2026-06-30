@@ -34,6 +34,18 @@ function setTimezone(tz) {
   if (typeof scheduleSave === 'function') scheduleSave();
 }
 
+// ── Saldo arrastrado de meses anteriores ──────────────────
+// Suma (inc - exp) de todas las transacciones con fecha anterior al mes dado.
+function carryoverBalance(txs, ym) {
+  let bal = 0;
+  for (const t of txs) {
+    if ((t.date ?? '') < ym + '-01') {
+      bal += t.type === 'inc' ? t.amount : -t.amount;
+    }
+  }
+  return bal;
+}
+
 // ── Time format helpers (12h / 24h) ───────────────────────
 function getTimeFormat() {
   return loadData().config?.timeFormat || '24h';
