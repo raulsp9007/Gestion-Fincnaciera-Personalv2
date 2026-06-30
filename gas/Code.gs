@@ -17,9 +17,11 @@
 //   4. Implementa igual que opción A
 
 // ── Punto de entrada GET (ping / diagnóstico) ─────────────
+const _CODE_VERSION = 'v2-68-normalizecell';
+
 function doGet(e) {
   const action = (e?.parameter?.action ?? 'ping');
-  if (action === 'ping') return _json({ ok: true, pong: true, method: 'GET' });
+  if (action === 'ping') return _json({ ok: true, pong: true, method: 'GET', version: _CODE_VERSION });
   return _json({ ok: false, error: 'Solo ping está disponible por GET' });
 }
 
