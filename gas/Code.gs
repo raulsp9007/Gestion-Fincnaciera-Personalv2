@@ -37,6 +37,19 @@ function doGet(e) {
     }
     return _json({ ok: true, DATA_HEADERS, sheetName, actualHeaders });
   }
+  if (action === 'debugForceMigrate') {
+    const sheetName = e?.parameter?.sheetName ?? null;
+    if (!sheetName) return _json({ ok: false, error: 'sheetName requerido' });
+    try {
+      const ss     = _getSpreadsheet();
+      const sheet  = _ensureSheet(ss, sheetName);
+      const lastCol = sheet.getLastColumn();
+      const headersAfter = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+      return _json({ ok: true, headersAfter });
+    } catch (err) {
+      return _json({ ok: false, error: err.message, stack: err.stack });
+    }
+  }
   return _json({ ok: false, error: 'Solo ping/debugHeaders disponibles por GET' });
 }
 
