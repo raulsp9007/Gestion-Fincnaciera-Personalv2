@@ -224,21 +224,24 @@ async function pushSharedConfig() {
   await callGas('setConfig', { key: 'shared_menus', value: JSON.stringify(sharedMenus) });
 }
 
-// ── Full sync de un menú compartido (push todo + pull todo) ──
+// ── Full sync de un menú compartido (pull todo + merge + push) ──
+// Orden importa: pull primero evita que un push con cache local stale
+// (ej. campo time vacio por bug ya corregido) sobreescriba datos buenos
+// que ya estan en el servidor.
 async function forceFullMenuSync(menuId) {
   const menu = getCustomMenu(menuId);
   if (!menu?.shared || !menu.sheetName || !getGasUrl()) return;
   try {
     setSyncBadge('saving');
     showToast('Sincronizando…', 'var(--text2)');
-    // 1. Subir TODOS los registros locales (incluyendo campo time)
-    await pushMenuToGas(menuId);
-    // 2. Bajar TODOS los registros sin filtro de fecha
+    // 1. Bajar TODOS los registros sin filtro de fecha y mergear primero
     const r = await callGas('pullRows', { sheetName: menu.sheetName });
     if (r.rows?.length) {
       mergeMenuRows(menuId, r.rows);
       setMenuLastPulled(menuId, r.pulledAt);
     }
+    // 2. Subir registros locales (ahora ya actualizados con lo del servidor)
+    await pushMenuToGas(menuId);
     setSyncBadge('ok');
     if (typeof renderCustomMenu === 'function') renderCustomMenu(menuId);
     showToast('Sync completo ✓');

@@ -22,17 +22,7 @@ const _CODE_VERSION = 'v2-68-normalizecell';
 function doGet(e) {
   const action = (e?.parameter?.action ?? 'ping');
   if (action === 'ping') return _json({ ok: true, pong: true, method: 'GET', version: _CODE_VERSION });
-  if (action === 'debugPullRows') {
-    const sheetName = e?.parameter?.sheetName ?? null;
-    if (!sheetName) return _json({ ok: false, error: 'sheetName requerido' });
-    try {
-      const result = _pullRows({ sheetName });
-      return _json(result);
-    } catch (err) {
-      return _json({ ok: false, error: err.message, stack: err.stack });
-    }
-  }
-  return _json({ ok: false, error: 'Solo ping/debugPullRows disponibles por GET' });
+  return _json({ ok: false, error: 'Solo ping está disponible por GET' });
 }
 
 // ── Punto de entrada POST ─────────────────────────────────
