@@ -20,37 +20,7 @@
 function doGet(e) {
   const action = (e?.parameter?.action ?? 'ping');
   if (action === 'ping') return _json({ ok: true, pong: true, method: 'GET' });
-  if (action === 'debugHeaders') {
-    const sheetName = e?.parameter?.sheetName ?? null;
-    let actualHeaders = null;
-    if (sheetName) {
-      try {
-        const ss    = _getSpreadsheet();
-        const sheet = ss.getSheetByName(sheetName);
-        if (sheet) {
-          const lastCol = sheet.getLastColumn();
-          actualHeaders = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
-        } else {
-          actualHeaders = 'SHEET_NOT_FOUND';
-        }
-      } catch (err) { actualHeaders = 'ERROR: ' + err.message; }
-    }
-    return _json({ ok: true, DATA_HEADERS, sheetName, actualHeaders });
-  }
-  if (action === 'debugForceMigrate') {
-    const sheetName = e?.parameter?.sheetName ?? null;
-    if (!sheetName) return _json({ ok: false, error: 'sheetName requerido' });
-    try {
-      const ss     = _getSpreadsheet();
-      const sheet  = _ensureSheet(ss, sheetName);
-      const lastCol = sheet.getLastColumn();
-      const headersAfter = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
-      return _json({ ok: true, headersAfter });
-    } catch (err) {
-      return _json({ ok: false, error: err.message, stack: err.stack });
-    }
-  }
-  return _json({ ok: false, error: 'Solo ping/debugHeaders disponibles por GET' });
+  return _json({ ok: false, error: 'Solo ping está disponible por GET' });
 }
 
 // ── Punto de entrada POST ─────────────────────────────────
@@ -191,8 +161,9 @@ function _ensureSheet(ss, sheetName) {
 function _pullRows({ sheetName, since }) {
   if (!sheetName) throw new Error('sheetName requerido');
   const ss    = _getSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
+  let sheet   = ss.getSheetByName(sheetName);
   if (!sheet) return { ok: true, rows: [], pulledAt: new Date().toISOString() };
+  sheet = _ensureSheet(ss, sheetName); // migra columnas faltantes si aplica
 
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return { ok: true, rows: [], pulledAt: new Date().toISOString() };
