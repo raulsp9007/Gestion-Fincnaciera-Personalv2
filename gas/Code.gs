@@ -20,7 +20,24 @@
 function doGet(e) {
   const action = (e?.parameter?.action ?? 'ping');
   if (action === 'ping') return _json({ ok: true, pong: true, method: 'GET' });
-  return _json({ ok: false, error: 'Solo ping está disponible por GET' });
+  if (action === 'debugHeaders') {
+    const sheetName = e?.parameter?.sheetName ?? null;
+    let actualHeaders = null;
+    if (sheetName) {
+      try {
+        const ss    = _getSpreadsheet();
+        const sheet = ss.getSheetByName(sheetName);
+        if (sheet) {
+          const lastCol = sheet.getLastColumn();
+          actualHeaders = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+        } else {
+          actualHeaders = 'SHEET_NOT_FOUND';
+        }
+      } catch (err) { actualHeaders = 'ERROR: ' + err.message; }
+    }
+    return _json({ ok: true, DATA_HEADERS, sheetName, actualHeaders });
+  }
+  return _json({ ok: false, error: 'Solo ping/debugHeaders disponibles por GET' });
 }
 
 // ── Punto de entrada POST ─────────────────────────────────
