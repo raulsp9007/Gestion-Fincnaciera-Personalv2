@@ -217,7 +217,9 @@ function mergeMenuRows(menuId, remoteRows) {
 
     if (!local) {
       if (!Number(remote.deleted)) map.set(key, _gasRowToTx(remote));
-    } else if (remoteTs > localTs) {
+    } else if (remoteTs >= localTs) {
+      // En empate gana el servidor: permite que datos re-normalizados en
+      // GAS (ej. campo time corregido) lleguen aunque updatedAt no cambió
       if (Number(remote.deleted)) map.delete(key);
       else map.set(key, _gasRowToTx(remote));
     }
