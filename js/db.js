@@ -20,6 +20,7 @@ function loadData() {
 function saveData() {
   if (!_data) return;
   localStorage.setItem(CACHE_KEY, JSON.stringify(_data));
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
 // ── Timezone helpers ──────────────────────────────────────

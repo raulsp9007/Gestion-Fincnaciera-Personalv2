@@ -199,6 +199,23 @@ function startAutosave() {
 function stopAutosave() {
   clearInterval(_autosaveTimer);
   _autosaveTimer = null;
+  clearTimeout(_autosaveDebounceTimer);
+  _autosaveDebounceTimer = null;
+}
+
+// ── Trigger por cambio real (debounced) ───────────────────
+// El setInterval de arriba depende de dejar la pestaña abierta todo
+// el intervalo (Chrome suspende timers en pestañas en 2do plano/cerradas).
+// Este trigger corre poco después de cada cambio real (saveData()),
+// mientras la app está realmente en uso — mucho más confiable.
+const _AUTOSAVE_DEBOUNCE_MS = 120_000; // 2 min
+let _autosaveDebounceTimer = null;
+
+function scheduleAutosave() {
+  const cfg = getAutosaveConfig();
+  if (!cfg.enabled) return;
+  clearTimeout(_autosaveDebounceTimer);
+  _autosaveDebounceTimer = setTimeout(() => runAutosave(false), _AUTOSAVE_DEBOUNCE_MS);
 }
 
 // ── Admin UI ──────────────────────────────────────────────
