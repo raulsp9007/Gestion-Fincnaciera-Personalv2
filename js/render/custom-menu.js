@@ -454,10 +454,10 @@ function _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec) {
     }
   }
 
-  // ── Doughnut — top expense cats ───────────────────────
+  // ── Doughnut — top expense cats (mes seleccionado) ────
   if (sec.cat) {
     const catTotals = {};
-    for (const t of allTxs.filter(t => t.type === 'exp')) {
+    for (const t of monthTxs.filter(t => t.type === 'exp')) {
       catTotals[t.category] = (catTotals[t.category] ?? 0) + t.amount;
     }
     const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, sec.catLimit ?? 8);
@@ -491,10 +491,10 @@ function _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec) {
     }
   }
 
-  // ── Doughnut — top income cats ────────────────────────
+  // ── Doughnut — top income cats (mes seleccionado) ─────
   if (sec.inc) {
     const incTotals = {};
-    for (const t of allTxs.filter(t => t.type === 'inc')) {
+    for (const t of monthTxs.filter(t => t.type === 'inc')) {
       incTotals[t.category] = (incTotals[t.category] ?? 0) + t.amount;
     }
     const sortedInc = Object.entries(incTotals).sort((a, b) => b[1] - a[1]).slice(0, sec.incLimit ?? 8);
