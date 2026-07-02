@@ -346,7 +346,7 @@ function generateMenuReport(menuId) {
   const fmt = n => (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + curr;
   const monthLabel = new Date(ym + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
   const sorted = [...monthTxs].sort((a, b) =>
-    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.id - a.id));
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
   const catRows = Object.entries(expByCat).map(([key, amount]) => {
     const cat    = cats.exp?.[key] ?? { label: key, color: '#64748b' };
@@ -656,7 +656,7 @@ function _menuTxTable(menu, txs, cats, curr, fSearch = '', fType = '', fCat = ''
   if (fFrom)   list = list.filter(t => t.date >= fFrom);
   if (fTo)     list = list.filter(t => t.date <= fTo);
   const sorted = list.sort((a, b) =>
-    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.id - a.id));
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
   const catsHtml = [
     ...Object.entries(cats.inc ?? {}).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`),
@@ -1285,7 +1285,7 @@ function _renderFuelHistory(menuId, entries, consMap, curr) {
     return `<div style="text-align:center;color:var(--text2);padding:20px 0;font-size:.85rem">Sin cargas este mes</div>`;
   }
   const sorted = [...entries].sort((a, b) =>
-    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.id - a.id)
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.updatedAt || '').localeCompare(a.updatedAt || '')
   );
   return `<div style="display:flex;flex-direction:column;gap:8px">
     ${sorted.map(e => {
@@ -1314,7 +1314,7 @@ function _renderOilSection(menuId, entries, curr) {
   if (!entries.length) {
     return `<div style="text-align:center;color:var(--text2);padding:20px 0;font-size:.85rem">Sin cambios de aceite este mes</div>`;
   }
-  const sorted = [...entries].sort((a, b) => (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.id - a.id));
+  const sorted = [...entries].sort((a, b) => (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   return `<div style="display:flex;flex-direction:column;gap:8px">
     ${sorted.map(e => `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
       <div style="font-size:1.3rem;min-width:28px;text-align:center">🛢️</div>

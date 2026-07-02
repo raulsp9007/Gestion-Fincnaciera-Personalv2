@@ -165,7 +165,9 @@ function addMenuTx(menuId, fields) {
   const d  = loadData();
   const m  = d.customMenus.find(m => m.id === menuId);
   if (!m) return null;
-  const tx = { id: m.nextDataId++, updatedAt: new Date().toISOString(), ...fields };
+  const id = Math.max(Date.now(), m.nextDataId);
+  m.nextDataId = id + 1;
+  const tx = { id, updatedAt: new Date().toISOString(), ...fields };
   m.data.push(tx);
   saveData();
   return tx;
