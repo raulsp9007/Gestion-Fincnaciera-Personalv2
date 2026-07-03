@@ -23,6 +23,22 @@ function saveData() {
   if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
+// Fecha del registro/movimiento modificado mas recientemente en
+// cualquier menu local (inicio, deudas, menus personalizados).
+function getLastDataModification() {
+  const d = loadData();
+  let latest = '';
+  const scan = arr => {
+    for (const t of arr ?? []) {
+      if (t.updatedAt && t.updatedAt > latest) latest = t.updatedAt;
+    }
+  };
+  scan(d.inicio);
+  scan(d.deudas);
+  for (const m of d.customMenus ?? []) scan(m.data);
+  return latest || null;
+}
+
 // ── Timezone helpers ──────────────────────────────────────
 function getTimezone() {
   return loadData().config?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;

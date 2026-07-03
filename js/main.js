@@ -339,7 +339,19 @@ function showLoginScreen() {
   sel.innerHTML = users.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('');
   document.getElementById('login-pin').value      = '';
   document.getElementById('login-error').textContent = '';
+  _renderLoginVersionInfo();
   document.getElementById('login-screen').classList.remove('hidden');
+}
+
+function _renderLoginVersionInfo() {
+  const el = document.getElementById('login-version-info');
+  if (!el) return;
+  const lastMod = (typeof getLastDataModification === 'function') ? getLastDataModification() : null;
+  const lastModStr = lastMod ? new Date(lastMod).toLocaleString('es-ES') : 'Sin registros aún';
+  el.innerHTML = `
+    Versión app: <strong>${esc(APP_VERSION)}</strong><br>
+    Última modificación de datos: <strong>${esc(lastModStr)}</strong>
+  `;
 }
 
 // ── Setup (primer admin) ──────────────────────────────────
