@@ -253,8 +253,8 @@ function openDeudaPagosModal(deudaId) {
             ${p.notes ? `<div style="color:var(--text2);font-size:.72rem;margin-top:2px">${esc(p.notes)}</div>` : ''}
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
-            <button class="btn-icon" title="Editar" onclick="editPagoItem(${deudaId},${payments.length - 1 - i})">✏️</button>
-            <button class="btn-icon" title="Eliminar" style="color:var(--red)" onclick="deletePagoItem(${deudaId},${payments.length - 1 - i})">🗑</button>
+            <button class="btn-icon" title="Editar" onclick="document.getElementById('deuda-pagos-overlay').remove();openPagoModal(${deudaId});editPagoItem(${deudaId},${payments.length - 1 - i})">✏️</button>
+            <button class="btn-icon" title="Eliminar" style="color:var(--red)" onclick="document.getElementById('deuda-pagos-overlay').remove();deletePagoItem(${deudaId},${payments.length - 1 - i})">🗑</button>
           </div>
         </div>`).join('')
     : `<div style="color:var(--text2);font-size:.82rem;padding:16px 0;text-align:center">Sin pagos registrados</div>`;
