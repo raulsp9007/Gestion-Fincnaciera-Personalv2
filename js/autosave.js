@@ -181,15 +181,21 @@ async function _writeToFolder(handle, name, content, allowPrompt) {
 // plano): sin gesto, nunca pide permiso ni fuerza descargas — si el
 // permiso no está ya concedido, se salta el ciclo y marca para reconectar.
 async function runAutosave(manual = false) {
+  // Automático (timer de respaldo o debounce): si no hay cambios desde
+  // el ultimo guardado exitoso, no hay nada que escribir — salir.
+  if (!manual && !_autosaveDirty) return;
+
   const files  = _buildFiles();
   const handle = await _loadDirHandle();
 
   if (handle) {
     try {
       for (const f of files) await _writeToFolder(handle, f.name, f.content, manual);
+      _autosaveDirty = false;
     } catch (e) {
       if (!manual) {
         // Sin gesto: no forzar descargas, solo marcar que hace falta reconectar
+        // (_autosaveDirty sigue true — se reintentará en el proximo trigger)
         const cfg = getAutosaveConfig();
         cfg.needsReconnect = true;
         _saveAutosaveConfig(cfg);
@@ -200,6 +206,7 @@ async function runAutosave(manual = false) {
         _downloadFile(f.name, f.content);
         await new Promise(r => setTimeout(r, 150));
       }
+      _autosaveDirty = false;
     }
   } else if (manual) {
     // Fallback: descargas individuales (solo con gesto real)
@@ -207,6 +214,7 @@ async function runAutosave(manual = false) {
       _downloadFile(f.name, f.content);
       await new Promise(r => setTimeout(r, 150));
     }
+    _autosaveDirty = false;
   } else {
     return; // sin carpeta y sin gesto: no forzar descargas en segundo plano
   }
@@ -246,10 +254,12 @@ function stopAutosave() {
 // mientras la app está realmente en uso — mucho más confiable.
 const _AUTOSAVE_DEBOUNCE_MS = 120_000; // 2 min
 let _autosaveDebounceTimer = null;
+let _autosaveDirty = false; // true si hay cambios sin escribir en la carpeta local
 
 function scheduleAutosave() {
   const cfg = getAutosaveConfig();
   if (!cfg.enabled) return;
+  _autosaveDirty = true;
   clearTimeout(_autosaveDebounceTimer);
   _autosaveDebounceTimer = setTimeout(() => runAutosave(false), _AUTOSAVE_DEBOUNCE_MS);
 }
