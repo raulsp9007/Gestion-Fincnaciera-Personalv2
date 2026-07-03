@@ -140,13 +140,15 @@ function _downloadFile(name, content) {
   URL.revokeObjectURL(url);
 }
 
-async function _writeToFolder(handle, name, content) {
-  // Re-check permission (puede expirar)
-  const perm = await handle.queryPermission({ mode: 'readwrite' });
-  if (perm !== 'granted') {
-    const req = await handle.requestPermission({ mode: 'readwrite' });
-    if (req !== 'granted') throw new Error('Permiso denegado para la carpeta');
+// allowPrompt=true solo cuando hay gesto real del usuario (botón clic).
+// requestPermission() sin gesto es rechazado en silencio por el navegador —
+// llamarlo desde un timer en segundo plano no sirve y no debe intentarse.
+async function _writeToFolder(handle, name, content, allowPrompt) {
+  let perm = await handle.queryPermission({ mode: 'readwrite' });
+  if (perm !== 'granted' && allowPrompt) {
+    perm = await handle.requestPermission({ mode: 'readwrite' });
   }
+  if (perm !== 'granted') throw new Error('PERMISSION_NOT_GRANTED');
   const fileHandle = await handle.getFileHandle(name, { create: true });
   const writable   = await fileHandle.createWritable();
   await writable.write(JSON.stringify(content, null, 2));
@@ -154,30 +156,44 @@ async function _writeToFolder(handle, name, content) {
 }
 
 // ── Run autosave ──────────────────────────────────────────
+// manual=true (botón "Guardar ahora"): hay gesto real, puede pedir permiso
+// y caer a descargas si hace falta. manual=false (timer/debounce en 2do
+// plano): sin gesto, nunca pide permiso ni fuerza descargas — si el
+// permiso no está ya concedido, se salta el ciclo y marca para reconectar.
 async function runAutosave(manual = false) {
   const files  = _buildFiles();
   const handle = await _loadDirHandle();
 
   if (handle) {
     try {
-      for (const f of files) await _writeToFolder(handle, f.name, f.content);
+      for (const f of files) await _writeToFolder(handle, f.name, f.content, manual);
     } catch (e) {
-      // Permiso expiró — caer en descargas
+      if (!manual) {
+        // Sin gesto: no forzar descargas, solo marcar que hace falta reconectar
+        const cfg = getAutosaveConfig();
+        cfg.needsReconnect = true;
+        _saveAutosaveConfig(cfg);
+        return;
+      }
+      // Manual: sí cae a descargas como último recurso
       for (const f of files) {
         _downloadFile(f.name, f.content);
         await new Promise(r => setTimeout(r, 150));
       }
     }
-  } else {
-    // Fallback: descargas individuales
+  } else if (manual) {
+    // Fallback: descargas individuales (solo con gesto real)
     for (const f of files) {
       _downloadFile(f.name, f.content);
       await new Promise(r => setTimeout(r, 150));
     }
+  } else {
+    return; // sin carpeta y sin gesto: no forzar descargas en segundo plano
   }
 
-  const cfg      = getAutosaveConfig();
-  cfg.lastSave   = new Date().toISOString();
+  const cfg          = getAutosaveConfig();
+  cfg.lastSave        = new Date().toISOString();
+  cfg.needsReconnect  = false;
   _saveAutosaveConfig(cfg);
   if (manual) {
     renderAutosaveSection();
@@ -265,8 +281,12 @@ function renderAutosaveSection() {
         </div>
       </div>
       <div style="font-size:.72rem;color:var(--text2)">Último autoguardado: <strong>${lastSave}</strong></div>
+      ${cfg.needsReconnect ? `
+        <div style="font-size:.72rem;color:var(--yellow);background:var(--yellow)15;border-radius:6px;padding:8px">
+          ⚠️ El permiso de la carpeta expiró. El autoguardado en segundo plano está pausado hasta que reconectes.
+        </div>` : ''}
       <div style="display:flex;gap:8px;margin-top:4px">
-        <button class="btn btn-ghost btn-sm" onclick="runAutosave(true)">💾 Guardar ahora</button>
+        <button class="btn btn-ghost btn-sm" onclick="runAutosave(true)">💾 Guardar ahora${cfg.needsReconnect ? ' / Reconectar' : ''}</button>
       </div>
       <p style="font-size:.7rem;color:var(--text2);margin:4px 0 0">
         Genera un JSON por cada menú nombrado: <em>NombreMenu_YYYY-MM-DD_HHmm.json</em>
