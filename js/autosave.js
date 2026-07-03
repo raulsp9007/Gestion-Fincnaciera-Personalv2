@@ -79,6 +79,26 @@ async function selectAutosaveFolder() {
   }
 }
 
+// Fuerza el re-prompt de permiso readwrite sobre la carpeta ya
+// seleccionada, aprovechando un gesto real (ej. clic en "Admin").
+// No re-pide elegir carpeta — usa el handle ya guardado en IndexedDB.
+async function forceAutosaveFolderPermission() {
+  const cfg = getAutosaveConfig();
+  if (!cfg.folderName) return; // no hay carpeta configurada, nada que forzar
+  const handle = await _loadDirHandle();
+  if (!handle) return;
+  try {
+    let perm = await handle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') {
+      perm = await handle.requestPermission({ mode: 'readwrite' });
+    }
+    if (perm === 'granted') {
+      cfg.needsReconnect = false;
+      _saveAutosaveConfig(cfg);
+    }
+  } catch { /* el navegador pudo bloquear el prompt, se reintenta en el proximo gesto */ }
+}
+
 async function clearAutosaveFolder() {
   await _clearDirHandle();
   const cfg = getAutosaveConfig();

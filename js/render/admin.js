@@ -1,9 +1,14 @@
 'use strict';
 
 // ── Panel Admin — modal principal ─────────────────────────
-function openAdminPanel() {
+async function openAdminPanel() {
   renderAdminUsers();
   renderGasSection();
+  // Abrir Admin es un clic real: aprovecha ese gesto para forzar el
+  // permiso de la carpeta de autoguardado si ya expiró.
+  if (typeof forceAutosaveFolderPermission === 'function') {
+    await forceAutosaveFolderPermission();
+  }
   renderAutosaveSection();
   renderSharedDeudasAdmin();
   _renderTimezoneSection();
