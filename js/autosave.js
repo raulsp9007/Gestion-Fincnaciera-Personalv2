@@ -247,12 +247,13 @@ function stopAutosave() {
   _autosaveDebounceTimer = null;
 }
 
-// ── Trigger por cambio real (debounced) ───────────────────
+// ── Trigger por cambio real (casi inmediato) ──────────────
 // El setInterval de arriba depende de dejar la pestaña abierta todo
 // el intervalo (Chrome suspende timers en pestañas en 2do plano/cerradas).
-// Este trigger corre poco después de cada cambio real (saveData()),
+// Este trigger corre justo después de cada cambio real (saveData()),
 // mientras la app está realmente en uso — mucho más confiable.
-const _AUTOSAVE_DEBOUNCE_MS = 120_000; // 2 min
+// 1s en vez de 0 solo para agrupar guardados simultáneos del mismo tick.
+const _AUTOSAVE_DEBOUNCE_MS = 1_000;
 let _autosaveDebounceTimer = null;
 let _autosaveDirty = false; // true si hay cambios sin escribir en la carpeta local
 
