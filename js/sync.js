@@ -84,8 +84,7 @@ async function _pullSharedConfig() {
 
     const existing = d.customMenus.find(m => m.sheetName === sm.sheetName);
     if (!existing) {
-      const id = d.customMenus.length
-        ? Math.max(...d.customMenus.map(m => m.id)) + 1 : 1;
+      const id = genId();
       d.customMenus.push({
         id, name: sm.name, icon: sm.icon ?? '📋',
         currency: sm.currency ?? '€', data: [], nextDataId: 1,
