@@ -127,7 +127,7 @@ function getTxsForMonth(ym) {
 function addTx(fields) {
   const d   = loadData();
   const txs = d.inicio;
-  const id  = Math.max(Date.now(), txs.length ? Math.max(...txs.map(t => t.id)) + 1 : 1);
+  const id  = genId();
   const tx  = { id, ...fields, updatedAt: new Date().toISOString() };
   txs.push(tx);
   saveData();
