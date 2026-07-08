@@ -214,10 +214,12 @@ function _normalizeCell(header, value, tz) {
 
 // Compara dos filas (arrays alineados a `headers`) ignorando la
 // columna 'updatedAt'. Devuelve true si son identicas.
-function _rowsEqualIgnoringUpdatedAt(headers, rowA, rowB) {
+function _rowsEqualIgnoringUpdatedAt(headers, rowA, rowB, tz) {
   for (let i = 0; i < headers.length; i++) {
     if (headers[i] === 'updatedAt') continue;
-    if (String(rowA[i] ?? '') !== String(rowB[i] ?? '')) return false;
+    const a = _normalizeCell(headers[i], rowA[i], tz);
+    const b = _normalizeCell(headers[i], rowB[i], tz);
+    if (String(a ?? '') !== String(b ?? '')) return false;
   }
   return true;
 }
@@ -238,6 +240,7 @@ function _pushRows({ sheetName, rows }) {
   const headers = data[0].map(String);
   const idCol   = headers.indexOf('id');
   const nowIso  = new Date().toISOString();
+  const tz      = ss.getSpreadsheetTimeZone();
 
   // Construir mapa id → número de fila (1-based)
   const idMap = {};
@@ -256,7 +259,7 @@ function _pushRows({ sheetName, rows }) {
         const v = row[h];
         return (v === null || v === undefined) ? '' : v;
       });
-      if (_rowsEqualIgnoringUpdatedAt(headers, existingArr, incomingArr)) {
+      if (_rowsEqualIgnoringUpdatedAt(headers, existingArr, incomingArr, tz)) {
         continue; // contenido identico, no tocar nada
       }
       const rowArr = headers.map((h, i) => h === 'updatedAt' ? nowIso : incomingArr[i]);
