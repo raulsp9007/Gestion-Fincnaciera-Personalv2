@@ -301,7 +301,7 @@ function getSharedDeudasMenu(id) {
 function addSharedDeudasMenu(fields) {
   const d = loadData();
   if (!d.sharedDeudasMenus) d.sharedDeudasMenus = [];
-  const id = d.sharedDeudasMenus.length ? Math.max(...d.sharedDeudasMenus.map(m => m.id)) + 1 : 1;
+  const id = genId();
   const menu = { id, data: [], lastPulledAt: null, ...fields };
   d.sharedDeudasMenus.push(menu);
   d.navOrder.push('sdeudas-' + id);
