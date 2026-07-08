@@ -547,13 +547,12 @@ function importMenuTxs(menuId, rawTxs) {
   const d = loadData();
   const m = d.customMenus.find(m => m.id === menuId);
   if (!m) return 0;
-  let nextId = m.nextDataId;
   let count  = 0;
   for (const tx of rawTxs) {
     const date = String(tx.date || '').slice(0, 10);
     if (!date) continue;
     m.data.push({
-      id:          nextId++,
+      id:          genId(),
       date,
       amount:      Number(tx.amount) || 0,
       description: String(tx.description || ''),
@@ -564,7 +563,6 @@ function importMenuTxs(menuId, rawTxs) {
     });
     count++;
   }
-  m.nextDataId = nextId;
   saveData();
   return count;
 }
