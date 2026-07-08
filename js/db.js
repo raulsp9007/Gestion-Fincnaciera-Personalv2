@@ -160,7 +160,7 @@ function getCustomMenu(menuId) {
 function addCustomMenu(fields) {
   const d     = loadData();
   const menus = d.customMenus;
-  const id    = menus.length ? Math.max(...menus.map(m => m.id)) + 1 : 1;
+  const id    = genId();
   const menu  = { id, data: [], nextDataId: 1, ...fields };
   menus.push(menu);
   d.navOrder.push('menu-' + id);
