@@ -24,13 +24,14 @@ function saveData() {
 }
 
 // Genera un id numerico grande semi-aleatorio: Date.now() (~13 digitos)
-// combinado con un componente aleatorio de 6 digitos. Colisionar requiere
+// combinado con un componente aleatorio de 3 digitos. Colisionar requiere
 // que dos dispositivos generen un registro en el MISMO milisegundo Y
-// saquen el MISMO numero aleatorio de 0 a 999999 — practicamente
-// imposible. Sigue siendo un Number plano: cero cambios en los onclick
-// que insertan ids sin comillas en toda la app.
+// saquen el MISMO numero aleatorio de 0 a 999 — practicamente
+// imposible. El resultado (~1.78e15) queda dentro de Number.MAX_SAFE_INTEGER
+// (~9.007e15), sin perdida de precision. Sigue siendo un Number plano:
+// cero cambios en los onclick que insertan ids sin comillas en toda la app.
 function genId() {
-  return Date.now() * 1e6 + Math.floor(Math.random() * 1e6);
+  return Date.now() * 1000 + Math.floor(Math.random() * 1000);
 }
 
 // Fecha del registro/movimiento modificado mas recientemente en
