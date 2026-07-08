@@ -134,7 +134,7 @@ async function _pullSharedConfig() {
       if (!access && !isAdmin) continue;
       const existing = d.sharedDeudasMenus.find(m => m.sheetName === sd.sheetName);
       if (!existing) {
-        const id = d.sharedDeudasMenus.length ? Math.max(...d.sharedDeudasMenus.map(m => m.id)) + 1 : 1;
+        const id = genId();
         d.sharedDeudasMenus.push({
           id, name: sd.name, sheetName: sd.sheetName,
           myRole: access?.role ?? 'admin', sharedWith: sd.sharedWith ?? [],
