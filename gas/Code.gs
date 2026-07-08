@@ -212,7 +212,20 @@ function _normalizeCell(header, value, tz) {
   return value.toISOString();
 }
 
-// Upsert de filas por id.
+// Compara dos filas (arrays alineados a `headers`) ignorando la
+// columna 'updatedAt'. Devuelve true si son identicas.
+function _rowsEqualIgnoringUpdatedAt(headers, rowA, rowB) {
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i] === 'updatedAt') continue;
+    if (String(rowA[i] ?? '') !== String(rowB[i] ?? '')) return false;
+  }
+  return true;
+}
+
+// Upsert de filas por id. Solo estampa updatedAt del servidor cuando el
+// contenido realmente cambio (o la fila es nueva) — evita que un push
+// del array completo (patron actual del cliente: siempre manda todos los
+// registros locales) pise el timestamp de filas sin cambios reales.
 function _pushRows({ sheetName, rows }) {
   if (!sheetName)               throw new Error('sheetName requerido');
   if (!Array.isArray(rows))     throw new Error('rows debe ser array');
@@ -224,6 +237,7 @@ function _pushRows({ sheetName, rows }) {
   const data    = sheet.getDataRange().getValues();
   const headers = data[0].map(String);
   const idCol   = headers.indexOf('id');
+  const nowIso  = new Date().toISOString();
 
   // Construir mapa id → número de fila (1-based)
   const idMap = {};
@@ -233,16 +247,26 @@ function _pushRows({ sheetName, rows }) {
 
   let upserted = 0;
   for (const row of rows) {
-    // Usar headers reales del sheet para respetar columnas existentes y futuras
-    const rowArr = headers.map(h => {
-      const v = row[h];
-      return (v === null || v === undefined) ? '' : v;
-    });
     const key = String(row.id);
+    const existingRowNum = idMap[key];
 
-    if (idMap[key]) {
-      sheet.getRange(idMap[key], 1, 1, headers.length).setValues([rowArr]);
+    if (existingRowNum) {
+      const existingArr = data[existingRowNum - 1];
+      const incomingArr = headers.map(h => {
+        const v = row[h];
+        return (v === null || v === undefined) ? '' : v;
+      });
+      if (_rowsEqualIgnoringUpdatedAt(headers, existingArr, incomingArr)) {
+        continue; // contenido identico, no tocar nada
+      }
+      const rowArr = headers.map((h, i) => h === 'updatedAt' ? nowIso : incomingArr[i]);
+      sheet.getRange(existingRowNum, 1, 1, headers.length).setValues([rowArr]);
     } else {
+      const rowArr = headers.map(h => {
+        if (h === 'updatedAt') return nowIso;
+        const v = row[h];
+        return (v === null || v === undefined) ? '' : v;
+      });
       sheet.appendRow(rowArr);
       idMap[key] = sheet.getLastRow();
     }
