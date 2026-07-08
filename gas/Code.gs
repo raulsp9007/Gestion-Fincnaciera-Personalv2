@@ -348,6 +348,18 @@ function _pullJsonRows({ sheetName, since }) {
   return { ok: true, rows, pulledAt: new Date().toISOString() };
 }
 
+// Compara dos objetos ya parseados ignorando el campo 'updatedAt'.
+function _jsonEqualIgnoringUpdatedAt(objA, objB) {
+  const a = Object.assign({}, objA); delete a.updatedAt;
+  const b = Object.assign({}, objB); delete b.updatedAt;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// Upsert de filas JSON por id. Solo estampa updatedAt del servidor cuando
+// el contenido (dentro del blob json, sin contar el propio updatedAt)
+// realmente cambio o la fila es nueva. El updatedAt se corrige tanto en
+// la columna del sheet como DENTRO del blob json (ambos se usan para
+// comparar en el merge del cliente — deben quedar sincronizados).
 function _pushJsonRows({ sheetName, rows }) {
   if (!sheetName)           throw new Error('sheetName requerido');
   if (!Array.isArray(rows)) throw new Error('rows debe ser array');
@@ -356,6 +368,7 @@ function _pushJsonRows({ sheetName, rows }) {
   const ss    = _getSpreadsheet();
   const sheet = _ensureJsonSheet(ss, sheetName);
   const data  = sheet.getDataRange().getValues();
+  const nowIso = new Date().toISOString();
 
   const idMap = {};
   for (let i = 1; i < data.length; i++) {
@@ -364,11 +377,25 @@ function _pushJsonRows({ sheetName, rows }) {
 
   let upserted = 0;
   for (const row of rows) {
-    const key    = String(row.id);
-    const rowArr = [key, row.json ?? '', row.updatedAt ?? '', row.deleted ? 1 : 0];
-    if (idMap[key]) {
-      sheet.getRange(idMap[key], 1, 1, 4).setValues([rowArr]);
+    const key = String(row.id);
+    const existingRowNum = idMap[key];
+    let incomingParsed;
+    try { incomingParsed = JSON.parse(row.json ?? '{}'); } catch (e) { incomingParsed = {}; }
+
+    if (existingRowNum) {
+      const existingJson = data[existingRowNum - 1][1];
+      let existingParsed;
+      try { existingParsed = JSON.parse(existingJson || '{}'); } catch (e) { existingParsed = {}; }
+
+      if (_jsonEqualIgnoringUpdatedAt(existingParsed, incomingParsed)) {
+        continue; // contenido identico, no tocar nada
+      }
+      incomingParsed.updatedAt = nowIso;
+      const rowArr = [key, JSON.stringify(incomingParsed), nowIso, row.deleted ? 1 : 0];
+      sheet.getRange(existingRowNum, 1, 1, 4).setValues([rowArr]);
     } else {
+      incomingParsed.updatedAt = nowIso;
+      const rowArr = [key, JSON.stringify(incomingParsed), nowIso, row.deleted ? 1 : 0];
       sheet.appendRow(rowArr);
       idMap[key] = sheet.getLastRow();
     }
