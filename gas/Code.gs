@@ -387,8 +387,11 @@ function _pushJsonRows({ sheetName, rows }) {
       let existingParsed;
       try { existingParsed = JSON.parse(existingJson || '{}'); } catch (e) { existingParsed = {}; }
 
-      if (_jsonEqualIgnoringUpdatedAt(existingParsed, incomingParsed)) {
-        continue; // contenido identico, no tocar nada
+      const existingDeleted = String(data[existingRowNum - 1][3]) === '1' || String(data[existingRowNum - 1][3]) === 'true';
+      const incomingDeleted = !!row.deleted;
+
+      if (incomingDeleted === existingDeleted && _jsonEqualIgnoringUpdatedAt(existingParsed, incomingParsed)) {
+        continue; // contenido identico y mismo estado deleted, no tocar nada
       }
       incomingParsed.updatedAt = nowIso;
       const rowArr = [key, JSON.stringify(incomingParsed), nowIso, row.deleted ? 1 : 0];
