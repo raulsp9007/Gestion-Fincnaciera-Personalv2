@@ -470,24 +470,38 @@ function nextOccurrence(dateStr, period) {
   return d.toISOString().slice(0, 10);
 }
 
+// Hash determinístico string→entero (DJB2). Usado para IDs de ocurrencias
+// recurrentes: mismo templateId+fecha siempre produce el mismo id, sin
+// importar en qué dispositivo se genere — evita duplicados al sincronizar.
+function _djb2(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
+// Negativo y con prefijo fijo: nunca colisiona con ids reales (positivos,
+// secuenciales o basados en Date.now()).
+function _recurringOccurrenceId(templateId, due) {
+  return -Math.abs(_djb2(`recur_${templateId}_${due}`)) - 1;
+}
+
 function processRecurringTxs() {
   const d     = loadData();
   const today = new Date().toISOString().slice(0, 10);
   const now   = new Date().toISOString();
   let changed = false;
 
-  const _dedup = (arr, templateId, date, desc, amount, type) =>
-    arr.some(x => x.id !== templateId && x.date === date &&
-                  x.description === desc && x.amount === amount && x.type === type);
-
   // Inicio txs
-  let nextTxId = Math.max(Date.now(), d.inicio.length ? Math.max(...d.inicio.map(t => t.id)) + 1 : 1);
   d.inicio.filter(t => t.recurring && t.recurringNext).forEach(t => {
     while (t.recurringNext && t.recurringNext <= today) {
       const due = t.recurringNext;
-      if (!_dedup(d.inicio, t.id, due, t.description, t.amount, t.type)) {
+      const occId = _recurringOccurrenceId(t.id, due);
+      if (!d.inicio.some(x => x.id === occId)) {
         const { recurringNext: _rn, ...base } = t;
-        d.inicio.push({ ...base, id: nextTxId++, date: due, updatedAt: now });
+        d.inicio.push({ ...base, id: occId, date: due, updatedAt: now });
         changed = true;
       }
       t.recurringNext = nextOccurrence(due, t.recurring);
@@ -501,9 +515,10 @@ function processRecurringTxs() {
     m.data.filter(t => t.recurring && t.recurringNext).forEach(t => {
       while (t.recurringNext && t.recurringNext <= today) {
         const due = t.recurringNext;
-        if (!_dedup(m.data, t.id, due, t.description, t.amount, t.type)) {
+        const occId = _recurringOccurrenceId(`${m.id}_${t.id}`, due);
+        if (!m.data.some(x => x.id === occId)) {
           const { recurringNext: _rn, ...base } = t;
-          m.data.push({ ...base, id: m.nextDataId++, date: due, updatedAt: now });
+          m.data.push({ ...base, id: occId, date: due, updatedAt: now });
           changed = true;
           menuChanged = true;
         }
