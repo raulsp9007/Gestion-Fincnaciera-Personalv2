@@ -1148,7 +1148,8 @@ function renderVehicleMenu(menuId) {
 
   const fuelCost    = monthFuel.reduce((s, e) => s + (e.totalCost || 0), 0);
   const oilCost     = monthOil.reduce((s, e)  => s + (e.totalCost || 0), 0);
-  const totalCost   = fuelCost + oilCost;
+  const maintCost   = monthMaint.reduce((s, e) => s + (e.cost || 0), 0);
+  const totalCost   = fuelCost + oilCost + maintCost;
   const totalLiters = monthFuel.reduce((s, e) => s + (e.liters || 0), 0);
   const avgPrice    = totalLiters > 0 ? fuelCost / totalLiters : 0;
 
@@ -1199,7 +1200,7 @@ function renderVehicleMenu(menuId) {
       <div class="card red">
         <div class="label">Total gastado</div>
         <div class="value">${_fmtCurr(totalCost, curr)}</div>
-        <div style="font-size:.7rem;color:var(--text2);margin-top:2px">combustible + aceite</div>
+        <div style="font-size:.7rem;color:var(--text2);margin-top:2px">combustible + aceite + mantenimiento</div>
       </div>
       <div class="card red" style="--card-accent:#ef9a9a">
         <div class="label">Combustible</div>
