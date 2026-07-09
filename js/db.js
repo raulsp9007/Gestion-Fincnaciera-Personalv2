@@ -3,6 +3,17 @@
 // ── App data (Inicio + custom menus) ─────────────────────
 let _data = null;
 
+// Ordena entradas [key, {label,...}] alfabeticamente por label, ignorando
+// emojis/simbolos al inicio (ej. "🥚Huevo" ordena junto a la H, no por
+// el codepoint del emoji). Usado en todo select/lista de categorias para
+// que el orden sea siempre alfabetico, sin importar el orden de insercion.
+function _sortCatEntries(entries) {
+  const stripLeading = label => (label ?? '').replace(/^[^\p{L}\p{N}]+/u, '');
+  return [...entries].sort((a, b) =>
+    stripLeading(a[1]?.label).localeCompare(stripLeading(b[1]?.label), 'es', { sensitivity: 'base' })
+  );
+}
+
 function loadData() {
   if (_data) return _data;
   try {

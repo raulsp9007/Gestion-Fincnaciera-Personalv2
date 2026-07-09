@@ -659,8 +659,8 @@ function _menuTxTable(menu, txs, cats, curr, fSearch = '', fType = '', fCat = ''
     (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
   const catsHtml = [
-    ...Object.entries(cats.inc ?? {}).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`),
-    ...Object.entries(cats.exp ?? {}).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`)
+    ..._sortCatEntries(Object.entries(cats.inc ?? {})).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`),
+    ..._sortCatEntries(Object.entries(cats.exp ?? {})).map(([k, v]) => `<option value="${k}" ${fCat === k ? 'selected' : ''}>${esc(v.label)}</option>`)
   ].join('');
 
   const emptyMsg = sorted.length === 0 ? `

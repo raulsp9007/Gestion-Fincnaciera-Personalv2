@@ -369,7 +369,7 @@ function _updateTxCatOptions() {
   const type = document.getElementById('tx-type')?.value ?? 'exp';
   const cats = loadData().globalCats[type] ?? {};
   document.getElementById('tx-cat').innerHTML =
-    Object.entries(cats).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+    _sortCatEntries(Object.entries(cats)).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
 }
 
 function closeTxModal() {

@@ -479,7 +479,7 @@ function _setCatsTypeUI() {
 function renderCatsList() {
   const cats = loadData().globalCats[_catsType] ?? {};
   const el   = document.getElementById('cats-list');
-  const entries = Object.entries(cats);
+  const entries = _sortCatEntries(Object.entries(cats));
   if (!entries.length) {
     el.innerHTML = '<div class="empty" style="padding:12px 0;font-size:.82rem">Sin categorías. Crea la primera.</div>';
     return;
@@ -594,7 +594,7 @@ function _renderBudgetsList() {
   const cats    = d.globalCats.exp ?? {};
   const budgets = getBudgets();
   const el      = document.getElementById('budgets-list');
-  const entries = Object.entries(cats);
+  const entries = _sortCatEntries(Object.entries(cats));
   if (!entries.length) {
     el.innerHTML = '<div class="empty" style="font-size:.82rem;padding:12px 0">Sin categorías de gastos</div>';
     return;

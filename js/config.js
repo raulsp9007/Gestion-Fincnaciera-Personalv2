@@ -1,7 +1,7 @@
 'use strict';
 
 // ── Versión y caché ───────────────────────────────────────
-const APP_VERSION  = 'v2-85';
+const APP_VERSION  = 'v2-86';
 const CACHE_KEY    = 'cashmap_v2_data';
 const USERS_KEY    = 'cashmap_v2_users';
 const SESSION_KEY  = 'cashmap_v2_session';
