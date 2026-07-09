@@ -14,6 +14,17 @@ function _sortCatEntries(entries) {
   );
 }
 
+// Normaliza "H:mm" -> "HH:mm" con cero a la izquierda. Registros con hora
+// guardada sin padding (ej. "8:50" en vez de "08:50") rompen la comparacion
+// lexicografica usada para ordenar por date+time ("8:50" > "12:30" como
+// string, aunque 8:50 sea cronologicamente anterior). Usado en todos los
+// comparadores de orden por fecha/hora para blindar contra ese caso.
+function _padTime(t) {
+  if (!t) return '00:00';
+  const [h, m] = String(t).split(':');
+  return String(h ?? '0').padStart(2, '0') + ':' + String(m ?? '00').padStart(2, '0');
+}
+
 function loadData() {
   if (_data) return _data;
   try {

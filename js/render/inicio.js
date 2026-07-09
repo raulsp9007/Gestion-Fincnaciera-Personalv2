@@ -221,7 +221,7 @@ function _renderNote(note) {
 // ── Transaction table ─────────────────────────────────────
 function _buildTxTable(txs, cats) {
   const sorted = [...txs].sort((a, b) =>
-    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')));
+    (b.date + _padTime(b.time)).localeCompare(a.date + _padTime(a.time)));
 
   if (!sorted.length) return `
     <div class="tbl-wrap">
