@@ -1333,6 +1333,39 @@ function _renderOilSection(menuId, entries, curr) {
   </div>`;
 }
 
+const _MAINT_TYPE_ICON  = { reparacion: '🔧', repuesto: '⚙️' };
+const _MAINT_TYPE_LABEL = { reparacion: 'Reparación', repuesto: 'Repuesto' };
+
+function _renderMaintenanceSection(menuId, entries, curr) {
+  if (!entries.length) {
+    return `<div style="text-align:center;color:var(--text2);padding:20px 0;font-size:.85rem">Sin registros de mantenimiento este mes</div>`;
+  }
+  const sorted = [...entries].sort((a, b) =>
+    (b.date + (b.time || '00:00')).localeCompare(a.date + (a.time || '00:00')) || (b.updatedAt || '').localeCompare(a.updatedAt || '')
+  );
+  return `<div style="display:flex;flex-direction:column;gap:8px">
+    ${sorted.map(e => {
+      const icon  = _MAINT_TYPE_ICON[e.maintType] ?? '🔧';
+      const title = e.maintType === 'repuesto'
+        ? [e.pieza, e.marca].filter(Boolean).join(' · ') || 'Repuesto'
+        : [e.taller, e.description].filter(Boolean).join(' · ') || _MAINT_TYPE_LABEL[e.maintType] || 'Mantenimiento';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:1.3rem;min-width:28px;text-align:center">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.88rem">${esc(title)}</div>
+          <div style="font-size:.75rem;color:var(--text2)">${e.date}${e.time ? ' ' + fmtTime(e.time) : ''}${e.odometerKm > 0 ? ' · ' + e.odometerKm.toLocaleString() + ' km' : ''}</div>
+          ${e.notes ? `<div style="font-size:.72rem;color:var(--text2);margin-top:2px">${esc(e.notes)}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;color:var(--red)">${_fmtCurr(e.cost || 0, curr)}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openMaintenanceModal(${menuId},${e.id})"
+                style="flex-shrink:0;padding:4px 8px">✏️</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function _renderVehicleCharts(menuId, allFuel, allOil, odomSorted, consMap) {
   const ascFuel = [...allFuel].sort((a, b) =>
     (a.date + (a.time || '00:00')).localeCompare(b.date + (b.time || '00:00'))
