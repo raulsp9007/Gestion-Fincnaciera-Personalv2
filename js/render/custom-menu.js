@@ -1141,8 +1141,10 @@ function renderVehicleMenu(menuId) {
   // legacy 'fuel' menus: entries without entryType treated as fuel
   const allFuel  = allEntries.filter(e => !e.entryType || e.entryType === 'fuel');
   const allOil   = allEntries.filter(e => e.entryType === 'oil');
-  const monthFuel = allFuel.filter(e => e.date?.startsWith(ym));
-  const monthOil  = allOil.filter(e => e.date?.startsWith(ym));
+  const allMaint = allEntries.filter(e => e.entryType === 'maintenance');
+  const monthFuel  = allFuel.filter(e => e.date?.startsWith(ym));
+  const monthOil   = allOil.filter(e => e.date?.startsWith(ym));
+  const monthMaint = allMaint.filter(e => e.date?.startsWith(ym));
 
   const fuelCost    = monthFuel.reduce((s, e) => s + (e.totalCost || 0), 0);
   const oilCost     = monthOil.reduce((s, e)  => s + (e.totalCost || 0), 0);
@@ -1227,6 +1229,7 @@ function renderVehicleMenu(menuId) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
         <button class="btn btn-primary" onclick="openFuelEntryModal(${menuId})">⛽ Registrar carga</button>
         <button class="btn btn-ghost"   onclick="openOilModal(${menuId})">🛢️ Cambio de aceite</button>
+        <button class="btn btn-ghost"   onclick="openMaintenanceModal(${menuId})">🔧 Mantenimiento</button>
       </div>
     ` : ''}
 
@@ -1238,6 +1241,11 @@ function renderVehicleMenu(menuId) {
     <div style="margin-top:16px">
       <div class="section-title" style="margin-bottom:8px">🛢️ Cambios de aceite</div>
       ${_renderOilSection(menuId, monthOil, curr)}
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="section-title" style="margin-bottom:8px">🔧 Mantenimiento</div>
+      ${_renderMaintenanceSection(menuId, monthMaint, curr)}
     </div>
 
     <div style="display:flex;flex-direction:column;gap:16px;margin-top:20px">
