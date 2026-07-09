@@ -490,6 +490,31 @@ function migrateTypes() {
   if (changed) saveData();
 }
 
+// Corrige registros con time guardado sin cero a la izquierda (ej. "8:50"
+// en vez de "08:50") -- dato historico de una fuente/version anterior que
+// rompia el orden cronologico por comparacion de texto.
+function migrateTimePadding() {
+  const d = loadData();
+  let changed = false;
+  let inicioChanged = false;
+  const affectedMenuIds = [];
+  const fix = tx => {
+    if (tx.time) {
+      const padded = _padTime(tx.time);
+      if (padded !== tx.time) { tx.time = padded; return true; }
+    }
+    return false;
+  };
+  for (const tx of d.inicio) if (fix(tx)) { changed = true; inicioChanged = true; }
+  for (const m of d.customMenus) {
+    let menuChanged = false;
+    for (const tx of m.data) if (fix(tx)) { changed = true; menuChanged = true; }
+    if (menuChanged) affectedMenuIds.push(m.id);
+  }
+  if (changed) saveData();
+  return { inicioChanged, affectedMenuIds };
+}
+
 // ── Recurrencia ───────────────────────────────────────────
 function nextOccurrence(dateStr, period) {
   if (!dateStr) return null;

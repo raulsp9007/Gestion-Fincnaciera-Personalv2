@@ -447,6 +447,13 @@ function startApp() {
   if (btnAdmin) btnAdmin.style.display = currentUser.role === 'admin' ? '' : 'none';
 
   try { migrateTypes(); } catch (e) { console.error('migrateTypes:', e); }
+  try {
+    const { inicioChanged, affectedMenuIds } = migrateTimePadding();
+    if (inicioChanged && typeof syncPrivateData === 'function') syncPrivateData().catch(() => {});
+    if (affectedMenuIds?.length && typeof onMenuSaved === 'function') {
+      affectedMenuIds.forEach(id => onMenuSaved(id).catch(() => {}));
+    }
+  } catch (e) { console.error('migrateTimePadding:', e); }
   buildNav();
   switchView('inicio');
   try {
