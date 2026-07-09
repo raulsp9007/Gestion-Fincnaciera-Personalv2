@@ -1559,6 +1559,98 @@ function confirmDeleteOilEntry() {
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }
 
+// ── Maintenance modal (Reparación/Taller + Repuestos/Piezas) ──
+function _updateMaintTypeFields() {
+  const type = document.getElementById('maint-type-sel').value;
+  const isReparacion = type === 'reparacion';
+  document.getElementById('maint-taller-row').style.display      = isReparacion ? '' : 'none';
+  document.getElementById('maint-description-row').style.display = isReparacion ? '' : 'none';
+  document.getElementById('maint-pieza-row').style.display        = isReparacion ? 'none' : '';
+  document.getElementById('maint-marca-row').style.display        = isReparacion ? 'none' : '';
+}
+
+function openMaintenanceModal(menuId, entryId = null) {
+  document.getElementById('maint-menu-id').value          = menuId;
+  document.getElementById('maint-entry-id').value         = entryId ?? '';
+  document.getElementById('maint-del-btn').style.display  = entryId != null ? '' : 'none';
+  document.getElementById('maintenance-modal-title').textContent = entryId != null ? '🔧 Editar mantenimiento' : '🔧 Registrar mantenimiento';
+
+  if (entryId != null) {
+    const e = getMenuTxs(menuId).find(t => t.id === entryId);
+    if (!e) return;
+    document.getElementById('maint-type-sel').value    = e.maintType ?? 'reparacion';
+    document.getElementById('maint-date').value        = e.date ?? '';
+    document.getElementById('maint-time').value        = e.time ?? '';
+    document.getElementById('maint-taller').value      = e.taller ?? '';
+    document.getElementById('maint-description').value = e.description ?? '';
+    document.getElementById('maint-pieza').value       = e.pieza ?? '';
+    document.getElementById('maint-marca').value       = e.marca ?? '';
+    document.getElementById('maint-cost').value        = e.cost ?? '';
+    document.getElementById('maint-odometer').value    = e.odometerKm > 0 ? e.odometerKm : '';
+    document.getElementById('maint-notes').value       = e.notes ?? '';
+  } else {
+    document.getElementById('maint-type-sel').value    = 'reparacion';
+    document.getElementById('maint-date').value        = _nowDate();
+    document.getElementById('maint-time').value        = _nowTime();
+    document.getElementById('maint-taller').value      = '';
+    document.getElementById('maint-description').value = '';
+    document.getElementById('maint-pieza').value       = '';
+    document.getElementById('maint-marca').value       = '';
+    document.getElementById('maint-cost').value        = '';
+    document.getElementById('maint-odometer').value    = '';
+    document.getElementById('maint-notes').value       = '';
+  }
+  _updateMaintTypeFields();
+  document.getElementById('maintenance-modal').classList.add('open');
+}
+
+function closeMaintenanceModal() {
+  document.getElementById('maintenance-modal').classList.remove('open');
+}
+
+function saveMaintEntry() {
+  const menuId  = parseInt(document.getElementById('maint-menu-id').value, 10);
+  const entryId = document.getElementById('maint-entry-id').value;
+  const cost    = parseFloat(document.getElementById('maint-cost').value);
+  const maintType = document.getElementById('maint-type-sel').value;
+
+  if (!cost) { showToast('Ingresa el costo', 'error'); return; }
+
+  const fields = {
+    entryType:   'maintenance',
+    maintType,
+    date:        document.getElementById('maint-date').value || _nowDate(),
+    time:        document.getElementById('maint-time').value || '',
+    cost,
+    odometerKm:  parseInt(document.getElementById('maint-odometer').value, 10) || 0,
+    notes:       document.getElementById('maint-notes').value.trim(),
+    taller:      maintType === 'reparacion' ? document.getElementById('maint-taller').value.trim() : '',
+    description: maintType === 'reparacion' ? document.getElementById('maint-description').value.trim() : '',
+    pieza:       maintType === 'repuesto' ? document.getElementById('maint-pieza').value.trim() : '',
+    marca:       maintType === 'repuesto' ? document.getElementById('maint-marca').value.trim() : '',
+  };
+
+  if (entryId) updateMenuTx(menuId, parseInt(entryId, 10), fields);
+  else         addMenuTx(menuId, fields);
+
+  closeMaintenanceModal();
+  renderVehicleMenu(menuId);
+  onMenuSaved(menuId).catch(() => {});
+  showToast('Mantenimiento guardado ✓');
+}
+
+function confirmDeleteMaintEntry() {
+  const menuId  = parseInt(document.getElementById('maint-menu-id').value, 10);
+  const entryId = parseInt(document.getElementById('maint-entry-id').value, 10);
+  showConfirm('¿Eliminar este registro de mantenimiento?', () => {
+    deleteMenuTx(menuId, entryId);
+    closeMaintenanceModal();
+    renderVehicleMenu(menuId);
+    onMenuSaved(menuId).catch(() => {});
+    showToast('Registro eliminado');
+  }, { icon: '🗑️', okLabel: 'Eliminar' });
+}
+
 // ── Vehicle info modal ────────────────────────────────────────
 function openVehicleInfoModal(menuId) {
   const menu = getCustomMenu(menuId);
