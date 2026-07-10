@@ -27,6 +27,75 @@ function _monthLabel(ym) {
     .toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
 }
 
+// ── Banner de recordatorios (recurrentes próximos) ────────
+function _reminderWhen(dateStr) {
+  const today = _nowDate();
+  const diffDays = Math.round(
+    (new Date(dateStr + 'T12:00:00') - new Date(today + 'T12:00:00')) / 86400000
+  );
+  if (diffDays <= 1) return 'mañana';
+  return `en ${diffDays} días`;
+}
+
+function _reminderAmount(it) {
+  if (it.menuId == null) return fmtMoney(it.amount);
+  const menu = getCustomMenu(it.menuId);
+  return _fmtCurr(it.amount, menu?.currency ?? '€');
+}
+
+function _maybeNotifyReminders(items) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const notified = new Set(getNotifiedReminders());
+  items.filter(it => !notified.has(it.key)).forEach(it => {
+    try {
+      new Notification('CashMap — recordatorio', {
+        body: `${it.description || 'Recurrente'}: ${_reminderWhen(it.recurringNext)}`,
+        icon: './icon.svg'
+      });
+    } catch { /* navegador puede bloquear silenciosamente, no es fatal */ }
+    markReminderNotified(it.key);
+  });
+}
+
+function _buildReminderBanner() {
+  const items = getUpcomingReminders();
+  if (!items.length) return '';
+
+  _maybeNotifyReminders(items);
+
+  const showNotifBtn = typeof Notification !== 'undefined' && Notification.permission === 'default';
+  const lead = items.length === 1
+    ? '1 recurrente se repite pronto'
+    : `${items.length} recurrentes se repiten pronto`;
+
+  return `<div class="reminder">
+    <span class="icon">⏰</span>
+    <div class="body">
+      <div class="lead">${lead}</div>
+      <ul class="items">
+        ${items.map(it => {
+          const origin = it.menuName ? ` <span style="color:var(--text2);font-weight:400">(${esc(it.menuName)})</span>` : '';
+          return `<li><b>${esc(it.description || 'Recurrente')}</b>${origin}<span class="when">${_reminderWhen(it.recurringNext)} · ${_reminderAmount(it)}</span></li>`;
+        }).join('')}
+      </ul>
+    </div>
+    <div class="actions">
+      ${showNotifBtn ? `<button class="btn-ghost-sm" onclick="requestReminderNotifications()">🔔 Activar notificaciones</button>` : ''}
+      <button class="btn-x" title="Descartar" onclick="dismissReminderBanner()">✕</button>
+    </div>
+  </div>`;
+}
+
+function dismissReminderBanner() {
+  const items = getUpcomingReminders();
+  dismissReminders(items.map(it => it.key));
+  renderInicio();
+}
+
+function requestReminderNotifications() {
+  Notification.requestPermission().then(() => renderInicio());
+}
+
 function _ym() {
   return _nowYM();
 }
@@ -54,6 +123,7 @@ function renderInicio() {
       <span class="section-label">📊 VISTA GENERAL</span>
       <span class="overview-updated">Actualizado: ${updStr}</span>
     </div>
+    ${_buildReminderBanner()}
     ${_buildMonthTabs()}
     ${menus.length
       ? `<div class="overview-grid">${menus.map(m => _buildOverviewCard(m, cats)).join('')}</div>`
