@@ -332,3 +332,29 @@ body.is-admin #tx-cat-cfg-btn{display:inline-flex}
   #fab{display:flex;position:fixed;bottom:calc(68px + env(safe-area-inset-bottom));right:16px;width:54px;height:54px;border-radius:50%;background:var(--acc);color:#fff;font-size:1.55rem;font-weight:300;align-items:center;justify-content:center;cursor:pointer;border:none;z-index:600;box-shadow:0 4px 20px rgba(59,130,246,.55);transition:transform .1s;-webkit-tap-highlight-color:transparent}
   #fab:active{transform:scale(.88)}
 }
+
+/* ── Reminder banner (recurrentes próximos) ───────────────── */
+.reminder{
+  display:flex;align-items:flex-start;gap:12px;
+  background:linear-gradient(180deg,#f59e0b14,#f59e0b0a);
+  border:1px solid #f59e0b40;border-radius:10px;padding:12px 14px;margin-bottom:14px;
+}
+.reminder .icon{font-size:1.15rem;line-height:1;margin-top:1px;flex-shrink:0}
+.reminder .body{flex:1;min-width:0}
+.reminder .lead{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:4px}
+.reminder ul.items{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+.reminder ul.items li{font-size:.78rem;color:var(--text2);display:flex;justify-content:space-between;gap:10px}
+.reminder ul.items li b{color:var(--text);font-weight:600}
+.reminder ul.items li .when{color:var(--yellow);font-weight:600;flex-shrink:0;text-align:right}
+.reminder .actions{display:flex;gap:6px;flex-shrink:0;margin-top:1px}
+.reminder .btn-ghost-sm{
+  background:transparent;border:1px solid var(--border);color:var(--text2);
+  font-size:.72rem;padding:5px 10px;border-radius:7px;cursor:pointer;transition:.15s;
+  font-family:inherit;white-space:nowrap;
+}
+.reminder .btn-ghost-sm:hover{background:var(--bg3);color:var(--text)}
+.reminder .btn-x{
+  background:transparent;border:none;color:var(--text2);font-size:1rem;line-height:1;
+  cursor:pointer;padding:2px 4px;border-radius:6px;transition:.15s;
+}
+.reminder .btn-x:hover{background:var(--bg3);color:var(--text)}
