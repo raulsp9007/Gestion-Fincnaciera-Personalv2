@@ -61,8 +61,6 @@ function _buildReminderBanner() {
   const items = getUpcomingReminders();
   if (!items.length) return '';
 
-  _maybeNotifyReminders(items);
-
   const showNotifBtn = typeof Notification !== 'undefined' && Notification.permission === 'default';
   const lead = items.length === 1
     ? '1 recurrente se repite pronto'
@@ -134,6 +132,8 @@ function renderInicio() {
   for (const menu of menus) {
     _drawOverviewCharts(menu, cats);
   }
+
+  _maybeNotifyReminders(getUpcomingReminders());
 }
 
 function _fmtNum(n) {
