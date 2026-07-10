@@ -589,6 +589,87 @@ function processRecurringTxs() {
   return affectedMenuIds;
 }
 
+// ── Recordatorios de recurrentes próximos ─────────────────
+const REMINDER_WINDOW_DAYS      = 3;
+const REMINDER_DISMISSED_KEY    = 'cashmap_v2_dismissed_reminders';
+const REMINDER_NOTIFIED_KEY     = 'cashmap_v2_notified_reminders';
+
+function _reminderKey(id, recurringNext) {
+  return `${id}:${recurringNext}`;
+}
+
+function _readReminderStore(storageKey) {
+  try { return JSON.parse(localStorage.getItem(storageKey)) ?? []; }
+  catch { return []; }
+}
+
+// Quita claves cuya fecha (parte después de ":") ya pasó, para que el set
+// no crezca sin límite. Devuelve la lista ya podada (y la persiste).
+function _pruneReminderStore(storageKey, today) {
+  const kept = _readReminderStore(storageKey).filter(key => {
+    const date = key.split(':')[1];
+    return date && date >= today;
+  });
+  localStorage.setItem(storageKey, JSON.stringify(kept));
+  return kept;
+}
+
+function getDismissedReminders() {
+  return _pruneReminderStore(REMINDER_DISMISSED_KEY, _nowDate());
+}
+
+function dismissReminders(keys) {
+  const current = _pruneReminderStore(REMINDER_DISMISSED_KEY, _nowDate());
+  const merged  = [...new Set([...current, ...keys])];
+  localStorage.setItem(REMINDER_DISMISSED_KEY, JSON.stringify(merged));
+}
+
+function getNotifiedReminders() {
+  return _pruneReminderStore(REMINDER_NOTIFIED_KEY, _nowDate());
+}
+
+function markReminderNotified(key) {
+  const current = _pruneReminderStore(REMINDER_NOTIFIED_KEY, _nowDate());
+  if (!current.includes(key)) {
+    current.push(key);
+    localStorage.setItem(REMINDER_NOTIFIED_KEY, JSON.stringify(current));
+  }
+}
+
+// Recurrentes con recurringNext dentro de (hoy, hoy+REMINDER_WINDOW_DAYS],
+// excluyendo los ya descartados por el usuario. recurringNext <= hoy ya lo
+// maneja processRecurringTxs() (se materializa como transacción real).
+function getUpcomingReminders() {
+  const d       = loadData();
+  const today   = _nowDate();
+  const limitD  = new Date(today + 'T12:00:00');
+  limitD.setDate(limitD.getDate() + REMINDER_WINDOW_DAYS);
+  const limit   = limitD.toISOString().slice(0, 10);
+  const dismissed = new Set(getDismissedReminders());
+
+  const items = [];
+  const collect = (tx, menuId, menuName) => {
+    if (!tx.recurring || !tx.recurringNext) return;
+    if (tx.recurringNext <= today || tx.recurringNext > limit) return;
+    const key = _reminderKey(tx.id, tx.recurringNext);
+    if (dismissed.has(key)) return;
+    items.push({
+      key, id: tx.id, menuId, menuName,
+      description: tx.description ?? '',
+      amount: tx.amount ?? 0,
+      recurringNext: tx.recurringNext
+    });
+  };
+
+  d.inicio.forEach(t => collect(t, null, null));
+  for (const m of d.customMenus) {
+    (m.data ?? []).filter(t => !t._deleted).forEach(t => collect(t, m.id, m.name));
+  }
+
+  items.sort((a, b) => a.recurringNext.localeCompare(b.recurringNext));
+  return items;
+}
+
 // ── Import transactions into a specific menu ──────────────
 function importMenuTxs(menuId, rawTxs) {
   const d = loadData();
