@@ -657,6 +657,7 @@ function getUpcomingReminders() {
       key, id: tx.id, menuId, menuName,
       description: tx.description ?? '',
       amount: tx.amount ?? 0,
+      recurring: tx.recurring,
       recurringNext: tx.recurringNext
     });
   };

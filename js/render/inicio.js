@@ -57,36 +57,33 @@ function _maybeNotifyReminders(items) {
   });
 }
 
+const _RECURRING_LABEL = { semanal: 'semanal', mensual: 'mensual', anual: 'anual' };
+
 function _buildReminderBanner() {
   const items = getUpcomingReminders();
   if (!items.length) return '';
 
-  const showNotifBtn = typeof Notification !== 'undefined' && Notification.permission === 'default';
-  const lead = items.length === 1
-    ? 'Próximo:'
-    : `${items.length} recurrentes se repiten pronto`;
+  return items.map((it, idx) => {
+    const showNotifBtn = idx === 0 && typeof Notification !== 'undefined' && Notification.permission === 'default';
+    const origin = it.menuName ? ` <span style="color:var(--text2);font-weight:400">(${esc(it.menuName)})</span>` : '';
+    const period = _RECURRING_LABEL[it.recurring] ?? 'periódica';
 
-  return `<div class="reminder">
+    return `<div class="reminder">
     <span class="icon">⏰</span>
     <div class="body">
-      <div class="lead">${lead}</div>
-      <ul class="items">
-        ${items.map(it => {
-          const origin = it.menuName ? ` <span style="color:var(--text2);font-weight:400">(${esc(it.menuName)})</span>` : '';
-          return `<li><b>${esc(it.description || 'Recurrente')}</b>${origin}<span class="when">${_reminderWhen(it.recurringNext)} · ${_reminderAmount(it)}</span></li>`;
-        }).join('')}
-      </ul>
+      <div class="lead">Se repite <b>${_reminderWhen(it.recurringNext)}</b>: ${esc(it.description || 'Recurrente')}${origin} — ${_reminderAmount(it)}</div>
+      <div class="sub">Recurrencia ${period} · próxima fecha ${fmtDate(it.recurringNext)}</div>
     </div>
     <div class="actions">
       ${showNotifBtn ? `<button class="btn-ghost-sm" onclick="requestReminderNotifications()">🔔 Activar notificaciones</button>` : ''}
-      <button class="btn-x" title="Descartar" onclick="dismissReminderBanner()">✕</button>
+      <button class="btn-x" title="Descartar" onclick="dismissReminderBanner('${it.key}')">✕</button>
     </div>
   </div>`;
+  }).join('');
 }
 
-function dismissReminderBanner() {
-  const items = getUpcomingReminders();
-  dismissReminders(items.map(it => it.key));
+function dismissReminderBanner(key) {
+  dismissReminders([key]);
   renderInicio();
 }
 

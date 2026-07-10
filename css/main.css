@@ -341,11 +341,9 @@ body.is-admin #tx-cat-cfg-btn{display:inline-flex}
 }
 .reminder .icon{font-size:1.15rem;line-height:1;margin-top:1px;flex-shrink:0}
 .reminder .body{flex:1;min-width:0}
-.reminder .lead{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:4px}
-.reminder ul.items{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
-.reminder ul.items li{font-size:.78rem;color:var(--text2);display:flex;justify-content:space-between;gap:10px}
-.reminder ul.items li b{color:var(--text);font-weight:600}
-.reminder ul.items li .when{color:var(--yellow);font-weight:600;flex-shrink:0;text-align:right}
+.reminder .lead{font-size:.85rem;font-weight:600;color:var(--text)}
+.reminder .lead b{color:var(--yellow);font-weight:700}
+.reminder .sub{font-size:.75rem;color:var(--text2);margin-top:2px}
 .reminder .actions{display:flex;gap:6px;flex-shrink:0;margin-top:1px}
 .reminder .btn-ghost-sm{
   background:transparent;border:1px solid var(--border);color:var(--text2);
