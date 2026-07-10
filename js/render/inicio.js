@@ -63,7 +63,7 @@ function _buildReminderBanner() {
 
   const showNotifBtn = typeof Notification !== 'undefined' && Notification.permission === 'default';
   const lead = items.length === 1
-    ? '1 recurrente se repite pronto'
+    ? 'Próximo:'
     : `${items.length} recurrentes se repiten pronto`;
 
   return `<div class="reminder">
