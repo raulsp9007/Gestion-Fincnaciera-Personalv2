@@ -181,6 +181,7 @@ function renderCustomMenu(menuId) {
     : '';
 
   const el = document.getElementById('view-custom');
+  const _focusInfo = _captureFocusWithin(el);
   el.innerHTML = `
     <div class="menu-header">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -267,6 +268,7 @@ function renderCustomMenu(menuId) {
     ${_menuBudgetSection(monthTxs, cats, curr, menuId, sec)}
     ${_menuTxTable(menu, monthTxs, cats, curr, fSearch, fType, fCat, fFrom, fTo)}
   `;
+  _restoreFocusWithin(_focusInfo);
 
   _drawMenuCharts(menuId, ym, allTxs, monthTxs, cats, curr, sec);
 }

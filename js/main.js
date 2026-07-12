@@ -10,6 +10,26 @@ function esc(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Al reconstruir un contenedor via innerHTML se pierde el foco del input
+// activo (ej. campo de búsqueda) aunque conserve su `id` y `value`, porque
+// el navegador crea un nodo DOM nuevo. Captura foco+cursor antes de wipe,
+// restaura después con el mismo id.
+function _captureFocusWithin(containerEl) {
+  const active = document.activeElement;
+  if (!active?.id || !containerEl.contains(active)) return null;
+  return { id: active.id, start: active.selectionStart, end: active.selectionEnd };
+}
+
+function _restoreFocusWithin(info) {
+  if (!info) return;
+  const el = document.getElementById(info.id);
+  if (!el) return;
+  el.focus();
+  if (info.start != null && typeof el.setSelectionRange === 'function') {
+    el.setSelectionRange(info.start, info.end);
+  }
+}
+
 // ── Toast ─────────────────────────────────────────────────
 function showToast(msg, color = 'var(--green)', ms = 2500) {
   const t = document.getElementById('toast');
