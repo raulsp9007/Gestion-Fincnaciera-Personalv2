@@ -1518,9 +1518,9 @@ function confirmDeleteFuelEntry() {
   const entryId = parseInt(document.getElementById('fuel-entry-id').value, 10);
   showConfirm('¿Eliminar este registro de carga?', () => {
     deleteMenuTx(menuId, entryId);
+    pushDeleteToGas(menuId, entryId);
     closeFuelModal();
     renderVehicleMenu(menuId);
-    onMenuSaved(menuId).catch(() => {});
     showToast('Registro eliminado');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }
@@ -1596,9 +1596,9 @@ function confirmDeleteOilEntry() {
   const entryId = parseInt(document.getElementById('oil-entry-id').value, 10);
   showConfirm('¿Eliminar este cambio de aceite?', () => {
     deleteMenuTx(menuId, entryId);
+    pushDeleteToGas(menuId, entryId);
     closeOilModal();
     renderVehicleMenu(menuId);
-    onMenuSaved(menuId).catch(() => {});
     showToast('Registro eliminado');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }
@@ -1688,9 +1688,9 @@ function confirmDeleteMaintEntry() {
   const entryId = parseInt(document.getElementById('maint-entry-id').value, 10);
   showConfirm('¿Eliminar este registro de mantenimiento?', () => {
     deleteMenuTx(menuId, entryId);
+    pushDeleteToGas(menuId, entryId);
     closeMaintenanceModal();
     renderVehicleMenu(menuId);
-    onMenuSaved(menuId).catch(() => {});
     showToast('Registro eliminado');
   }, { icon: '🗑️', okLabel: 'Eliminar' });
 }
