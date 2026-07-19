@@ -59,6 +59,26 @@ function _maybeNotifyReminders(items) {
 
 const _RECURRING_LABEL = { semanal: 'semanal', mensual: 'mensual', anual: 'anual' };
 
+// ── Resumen de plantillas recurrentes ─────────────────────
+function _buildRecurringSummary() {
+  const all = getAllRecurringTemplates();
+  if (!all.length) return '';
+  const active = all.filter(t => !t.recurringPaused).length;
+  const paused = all.filter(t => t.recurringPaused).length;
+  const activeLabel = `${active} plantilla${active === 1 ? '' : 's'} recurrente${active === 1 ? '' : 's'} activa${active === 1 ? '' : 's'}`;
+  const pausedLabel = paused ? ` · ${paused} pausada${paused === 1 ? '' : 's'}` : '';
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem">
+    <span>🔁 ${activeLabel}${pausedLabel}</span>
+    <a href="#" onclick="event.preventDefault();openAdminPanel().then(()=>switchAdminTab('recurrentes'))" style="color:var(--acc);font-weight:600;text-decoration:none;flex-shrink:0">Gestionar →</a>
+  </div>`;
+}
+
+function openNewRecurringTemplateModal() {
+  closeAdminPanel();
+  openNewRecordModal();
+  document.getElementById('tx-recurring').value = 'mensual';
+}
+
 function _buildReminderBanner() {
   const items = getUpcomingReminders();
   if (!items.length) return '';
@@ -118,6 +138,7 @@ function renderInicio() {
       <span class="section-label">📊 VISTA GENERAL</span>
       <span class="overview-updated">Actualizado: ${updStr}</span>
     </div>
+    ${_buildRecurringSummary()}
     ${_buildReminderBanner()}
     ${_buildMonthTabs()}
     ${menus.length
