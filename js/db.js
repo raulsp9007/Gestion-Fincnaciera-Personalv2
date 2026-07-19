@@ -558,7 +558,7 @@ function processRecurringTxs() {
       const occId = _recurringOccurrenceId(t.id, due);
       if (!d.inicio.some(x => x.id === occId)) {
         const { recurringNext: _rn, ...base } = t;
-        d.inicio.push({ ...base, id: occId, date: due, updatedAt: now });
+        d.inicio.push({ ...base, id: occId, date: due, updatedAt: now, templateId: t.id });
         changed = true;
       }
       t.recurringNext = nextOccurrence(due, t.recurring);
@@ -575,7 +575,7 @@ function processRecurringTxs() {
         const occId = _recurringOccurrenceId(`${m.id}_${t.id}`, due);
         if (!m.data.some(x => x.id === occId)) {
           const { recurringNext: _rn, ...base } = t;
-          m.data.push({ ...base, id: occId, date: due, updatedAt: now });
+          m.data.push({ ...base, id: occId, date: due, updatedAt: now, templateId: t.id });
           changed = true;
           menuChanged = true;
         }
@@ -587,6 +587,56 @@ function processRecurringTxs() {
 
   if (changed) saveData();
   return affectedMenuIds;
+}
+
+// ── Gestión de plantillas recurrentes ─────────────────────
+function getAllRecurringTemplates() {
+  const d = loadData();
+  const items = [];
+
+  d.inicio.filter(t => t.recurring).forEach(t => {
+    items.push({ ...t, menuId: null, menuName: 'Inicio' });
+  });
+
+  d.customMenus.forEach(m => {
+    (m.data ?? []).filter(t => !t._deleted && t.recurring).forEach(t => {
+      items.push({ ...t, menuId: m.id, menuName: m.name });
+    });
+  });
+
+  items.sort((a, b) => (a.recurringNext ?? '9999-99-99').localeCompare(b.recurringNext ?? '9999-99-99'));
+  return items;
+}
+
+// Pausa una plantilla: guarda su recurringNext en _pausedNext y lo limpia,
+// para que processRecurringTxs() la ignore sin perder el período.
+function pauseRecurringTemplate(menuId, id) {
+  const list = menuId == null ? getTxs() : getMenuTxs(menuId);
+  const tx = list.find(t => t.id === id);
+  if (!tx || !tx.recurring || tx.recurringPaused) return;
+  const fields = { recurringPaused: true, _pausedNext: tx.recurringNext, recurringNext: undefined };
+  if (menuId == null) updateTx(id, fields);
+  else updateMenuTx(menuId, id, fields);
+}
+
+// Reanuda una plantilla pausada. Si la fecha guardada ya quedó en el pasado,
+// recalcula desde hoy en vez de disparar un backlog de ocurrencias atrasadas.
+function resumeRecurringTemplate(menuId, id) {
+  const list = menuId == null ? getTxs() : getMenuTxs(menuId);
+  const tx = list.find(t => t.id === id);
+  if (!tx || !tx.recurringPaused) return;
+  const today = _nowDate();
+  const next = (tx._pausedNext && tx._pausedNext > today) ? tx._pausedNext : nextOccurrence(today, tx.recurring);
+  const fields = { recurringPaused: false, _pausedNext: undefined, recurringNext: next };
+  if (menuId == null) updateTx(id, fields);
+  else updateMenuTx(menuId, id, fields);
+}
+
+// Ocurrencias ya generadas por una plantilla, más recientes primero.
+function getRecurringOccurrences(menuId, templateId) {
+  const list = menuId == null ? loadData().inicio : (getCustomMenu(menuId)?.data ?? []);
+  return list.filter(t => t.templateId === templateId && !t._deleted)
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // ── Recordatorios de recurrentes próximos ─────────────────
