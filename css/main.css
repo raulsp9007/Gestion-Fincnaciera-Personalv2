@@ -97,7 +97,7 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .ovc-name{font-weight:700;font-size:.95rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ovc-curr-badge{font-size:.7rem;padding:2px 8px;border-radius:99px;background:var(--bg3);color:var(--text2);font-weight:600;flex-shrink:0}
 .ovc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
-.ovc-stat{background:var(--bg3);border-radius:8px;padding:7px 8px}
+.ovc-stat{background:var(--bg3);border-radius:8px;padding:7px 8px;min-width:0;overflow:hidden}
 .ovc-stat-label{font-size:.65rem;color:var(--text2);margin-bottom:2px}
 .ovc-stat-value{font-size:.78rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ovc-charts{display:flex;gap:10px}

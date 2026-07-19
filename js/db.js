@@ -483,6 +483,11 @@ function migrateTypes() {
   }
   for (const m of d.customMenus) {
     for (const tx of m.data) {
+      // Registros de vehículo (combustible/aceite/mantenimiento) no tienen
+      // `type` a propósito — su monto vive en totalCost/cost, no en amount.
+      // Forzarles type:'exp' aquí los hace contar como gasto sin poder leer
+      // su monto real, produciendo NaN en las tarjetas de Vista General.
+      if (tx.entryType) continue;
       const fixed = _normType(tx.type);
       if (fixed !== tx.type) { tx.type = fixed; changed = true; }
     }
