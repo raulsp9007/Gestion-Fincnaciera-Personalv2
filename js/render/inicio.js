@@ -183,7 +183,7 @@ function _buildOverviewCard(menu, cats) {
           <div class="ovc-stat-label">Gastos</div>
           <div class="ovc-stat-value" style="color:var(--red)">${curr}${_fmtNum(exp)}</div>
         </div>
-        <div class="ovc-stat">
+        <div class="ovc-stat ovc-stat-balance">
           <div class="ovc-stat-label">Balance</div>
           <div class="ovc-stat-value" style="color:${bal >= 0 ? 'var(--green)' : 'var(--red)'}">
             ${bal >= 0 ? '+' : ''}${curr}${_fmtNum(Math.abs(bal))}

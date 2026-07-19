@@ -96,7 +96,9 @@ tr:hover td{background:rgba(255,255,255,.03)}
 .ovc-icon{font-size:1.25rem;flex-shrink:0}
 .ovc-name{font-weight:700;font-size:.95rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ovc-curr-badge{font-size:.7rem;padding:2px 8px;border-radius:99px;background:var(--bg3);color:var(--text2);font-weight:600;flex-shrink:0}
-.ovc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.ovc-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
+/* Balance oculto a pedido — quitar esta regla y volver grid-template-columns arriba a repeat(3,1fr) para restaurarlo */
+.ovc-stat-balance{display:none}
 .ovc-stat{background:var(--bg3);border-radius:8px;padding:7px 8px;min-width:0;overflow:hidden}
 .ovc-stat-label{font-size:.65rem;color:var(--text2);margin-bottom:2px}
 .ovc-stat-value{font-size:.78rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
