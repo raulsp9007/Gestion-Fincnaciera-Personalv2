@@ -213,7 +213,7 @@ function renderCustomMenu(menuId) {
     <div class="cards">
       <div class="card green"><div class="label">Ingresos</div><div class="value">${_fmtCurr(inc, curr)}</div></div>
       <div class="card red"><div class="label">Gastos</div><div class="value">${_fmtCurr(exp, curr)}</div></div>
-      <div class="card ${bal >= 0 ? 'blue' : 'red'}"><div class="label">Balance</div><div class="value">${_fmtCurr(bal, curr)}</div></div>
+      <div class="card card-balance ${bal >= 0 ? 'blue' : 'red'}"><div class="label">Balance</div><div class="value">${_fmtCurr(bal, curr)}</div></div>
       ${fourthCard}
       <div class="card ${totalBal >= 0 ? 'blue' : 'red'}" title="Incluye saldo arrastrado de meses anteriores: ${_fmtCurr(carryover, curr)}">
         <div class="label">Saldo total</div>

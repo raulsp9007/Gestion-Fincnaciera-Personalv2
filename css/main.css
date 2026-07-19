@@ -49,6 +49,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 
 /* ── CARDS ───────────────────────────────────────────────── */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+/* Balance oculto a pedido — quitar esta regla para restaurarlo */
+.card-balance{display:none}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px}
 .card .label{font-size:.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .card .value{font-size:1.7rem;font-weight:700}
