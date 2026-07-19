@@ -392,6 +392,7 @@
       <button class="admin-tab"        onclick="switchAdminTab('autosave')">💾 Autoguardado</button>
       <button class="admin-tab"        onclick="switchAdminTab('datos')">📦 Export / Import</button>
       <button class="admin-tab"        onclick="switchAdminTab('menus')">📋 Menús</button>
+      <button class="admin-tab"        onclick="switchAdminTab('recurrentes')">🔁 Recurrentes</button>
       <button class="admin-tab"        onclick="switchAdminTab('config')">⚙️ Configuración</button>
     </div>
 
@@ -487,6 +488,13 @@
                 onclick="openShareDeudasModal()">💳 + Compartir deudas</button>
       </div>
 
+      <!-- TAB: Recurrentes -->
+      <div id="admin-tab-recurrentes" class="admin-tab-panel" style="display:none">
+        <div class="section-title" style="margin-top:0">Plantillas recurrentes</div>
+        <button class="btn btn-primary btn-sm" style="margin-bottom:12px" onclick="openNewRecurringTemplateModal()">+ Nueva plantilla recurrente</button>
+        <div id="admin-recurring-list"></div>
+      </div>
+
       <!-- TAB: Configuración -->
       <div id="admin-tab-config" class="admin-tab-panel" style="display:none">
         <div class="section-title" style="margin-top:0">Conexión GAS / Sheets</div>
@@ -508,6 +516,17 @@
 
     <div class="modal-actions" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
       <button class="btn btn-ghost" onclick="closeAdminPanel()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECURRING HISTORY MODAL ─────────────────────────────── -->
+<div class="modal-overlay" id="recurring-history-modal">
+  <div class="modal" style="width:min(420px,96vw)">
+    <h3>📜 Historial de ocurrencias</h3>
+    <div id="recurring-history-list" style="max-height:50vh;overflow-y:auto;margin:12px 0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeRecurringHistoryModal()">Cerrar</button>
     </div>
   </div>
 </div>
