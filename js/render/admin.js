@@ -14,6 +14,7 @@ async function openAdminPanel() {
   _renderTimezoneSection();
   _renderTimeFormatSection();
   _renderAdminMenusList();
+  renderAdminRecurring();
   document.getElementById('admin-modal').classList.add('open');
   switchAdminTab('usuarios');
 }
@@ -100,7 +101,7 @@ function switchAdminTab(id) {
   // Activar botón correspondiente
   const bar = document.getElementById('admin-tab-bar');
   if (bar) {
-    const idx = ['usuarios','categorias','autosave','datos','menus','config'].indexOf(id);
+    const idx = ['usuarios','categorias','autosave','datos','menus','recurrentes','config'].indexOf(id);
     const btns = bar.querySelectorAll('.admin-tab');
     if (btns[idx]) btns[idx].classList.add('active');
   }
@@ -656,4 +657,102 @@ function saveBudgetsModal() {
   closeBudgetsModal();
   renderInicio();
   showToast('Presupuestos guardados');
+}
+
+// ── Plantillas recurrentes ─────────────────────────────────
+const _RECURRING_PERIOD_LABEL = { semanal: 'Semanal', mensual: 'Mensual', anual: 'Anual' };
+
+function renderAdminRecurring() {
+  const el = document.getElementById('admin-recurring-list');
+  if (!el) return;
+  const items = getAllRecurringTemplates();
+  if (!items.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:.78rem;margin-bottom:12px">Sin plantillas recurrentes.</div>';
+    return;
+  }
+  el.innerHTML = items.map(t => {
+    const curr    = t.menuId == null ? '€' : (getCustomMenu(t.menuId)?.currency ?? '€');
+    const amtStr  = t.menuId == null ? fmtMoney(t.amount) : _fmtCurr(t.amount, curr);
+    const nextStr = t.recurringPaused
+      ? '<span class="badge pendiente">⏸ Pausado</span>'
+      : `Próx: ${fmtDate(t.recurringNext)}`;
+    const menuArg = t.menuId ?? 'null';
+    return `<div class="cat-row">
+      <span class="cat-row-label" style="font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description || 'Recurrente')}</span>
+      <span style="font-size:.72rem;color:var(--text2);flex-shrink:0">${esc(t.menuName)}</span>
+      <span style="font-size:.72rem;flex-shrink:0">${amtStr}</span>
+      <span style="font-size:.72rem;color:var(--text2);flex-shrink:0">${_RECURRING_PERIOD_LABEL[t.recurring] ?? esc(t.recurring)}</span>
+      <span style="font-size:.72rem;flex-shrink:0">${nextStr}</span>
+      <div class="cat-row-actions">
+        ${t.recurringPaused
+          ? `<button title="Reanudar" onclick="_adminResumeRecurring(${menuArg},${t.id})">▶</button>`
+          : `<button title="Pausar" onclick="_adminPauseRecurring(${menuArg},${t.id})">⏸</button>`}
+        <button title="Editar" onclick="adminEditRecurringTemplate(${menuArg},${t.id})">✏️</button>
+        <button title="Historial" onclick="openRecurringHistoryModal(${menuArg},${t.id})">📜</button>
+        <button title="Eliminar" onclick="adminDeleteRecurringTemplate(${menuArg},${t.id})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _afterRecurringChange(menuId) {
+  renderAdminRecurring();
+  if (menuId == null) syncPrivateData().catch(() => {});
+  else onMenuSaved(menuId).catch(() => {});
+}
+
+function _adminPauseRecurring(menuId, id) {
+  pauseRecurringTemplate(menuId, id);
+  _afterRecurringChange(menuId);
+  showToast('Plantilla pausada');
+}
+
+function _adminResumeRecurring(menuId, id) {
+  resumeRecurringTemplate(menuId, id);
+  _afterRecurringChange(menuId);
+  showToast('Plantilla reanudada');
+}
+
+function adminEditRecurringTemplate(menuId, id) {
+  closeAdminPanel();
+  if (menuId == null) openEditTxModal(id);
+  else openEditMenuTxModal(menuId, id);
+}
+
+function adminDeleteRecurringTemplate(menuId, id) {
+  const list = menuId == null ? getTxs() : getMenuTxs(menuId);
+  const tx = list.find(t => t.id === id);
+  if (!tx) return;
+  showConfirm(
+    `¿Eliminar la plantilla recurrente "${esc(tx.description || 'Recurrente')}"? El historial de registros ya generados NO se borra.`,
+    () => {
+      if (menuId == null) {
+        deleteTx(id);
+        syncPrivateData().catch(() => {});
+      } else {
+        deleteMenuTx(menuId, id);
+        pushDeleteToGas(menuId, id);
+      }
+      renderAdminRecurring();
+      showToast('Plantilla eliminada');
+    },
+    { icon: '🗑️', okLabel: 'Eliminar' }
+  );
+}
+
+function openRecurringHistoryModal(menuId, templateId) {
+  const occ  = getRecurringOccurrences(menuId, templateId);
+  const curr = menuId == null ? '€' : (getCustomMenu(menuId)?.currency ?? '€');
+  const el   = document.getElementById('recurring-history-list');
+  el.innerHTML = occ.length
+    ? occ.map(o => `<div class="cat-row">
+        <span style="flex:1">${fmtDate(o.date)}</span>
+        <span>${menuId == null ? fmtMoney(o.amount) : _fmtCurr(o.amount, curr)}</span>
+      </div>`).join('')
+    : '<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:16px">Sin ocurrencias generadas todavía.</div>';
+  document.getElementById('recurring-history-modal').classList.add('open');
+}
+
+function closeRecurringHistoryModal() {
+  document.getElementById('recurring-history-modal').classList.remove('open');
 }
