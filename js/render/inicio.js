@@ -494,10 +494,33 @@ async function saveTx() {
   const fields = { date, time, amount, description: desc, type, category: cat, notes,
                    recurring, recurringNext, attachments };
 
+  // Guard contra plantillas recurrentes duplicadas: crear un movimiento NUEVO
+  // con recurrencia marcada, cuando ya existe otra plantilla activa con la
+  // misma descripción en el mismo origen, es la causa más común de plantillas
+  // duplicadas (alguien re-crea a mano un pago que ya se repite solo).
+  if (!id && recurring) {
+    const menuId = _txContext.src === 'custom' ? _txContext.menuId : null;
+    const dup = getAllRecurringTemplates().find(t =>
+      t.menuId === menuId && !t.recurringPaused &&
+      (t.description || '').trim().toLowerCase() === desc.trim().toLowerCase()
+    );
+    if (dup) {
+      showConfirm(
+        `Ya existe una plantilla recurrente activa para "${esc(desc)}" (próxima: ${fmtDate(dup.recurringNext)}). ¿Crear otra de todas formas?`,
+        () => _finishSaveTx(id, fields),
+        { icon: '⚠️', okLabel: 'Crear otra' }
+      );
+      return;
+    }
+  }
+  _finishSaveTx(id, fields);
+}
+
+function _finishSaveTx(id, fields) {
   if (_txContext.src === 'custom') {
     const mid = _txContext.menuId;
     const menu = getCustomMenu(mid);
-    if (typeof _logHistory === 'function') _logHistory({ menuId: mid, menuName: menu?.name ?? '', action: id ? 'edit' : 'create', desc, amount, txType: type });
+    if (typeof _logHistory === 'function') _logHistory({ menuId: mid, menuName: menu?.name ?? '', action: id ? 'edit' : 'create', desc: fields.description, amount: fields.amount, txType: fields.type });
     if (id) updateMenuTx(mid, parseInt(id, 10), fields);
     else    addMenuTx(mid, fields);
     document.getElementById('tx-modal').classList.remove('open');
