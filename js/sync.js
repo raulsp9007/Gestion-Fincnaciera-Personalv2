@@ -201,9 +201,27 @@ async function pushMenuToGas(menuId) {
 }
 
 // ── Push single-record save ───────────────────────────────
+// Pull+merge primero (respeta tombstones remotos vía mergeMenuRows) antes de
+// empujar. Sin esto, pushMenuToGas sube TODO el array local con deleted:0
+// fijo — si este dispositivo aún conserva localmente una fila que otro
+// dispositivo ya borró (nunca hizo pull desde entonces), la resucita en el
+// servidor sin querer, en cuanto guarda cualquier cosa en el menú.
 async function onMenuSaved(menuId) {
   if (!getGasUrl()) return;
-  try { await pushMenuToGas(menuId); } catch { setSyncBadge('error'); }
+  try {
+    const menu = getCustomMenu(menuId);
+    if (menu?.shared && menu.sheetName) {
+      const r = await callGas('pullRows', { sheetName: menu.sheetName, since: menu.lastPulledAt });
+      if (r.rows?.length) {
+        mergeMenuRows(menuId, r.rows);
+        setMenuLastPulled(menuId, r.pulledAt);
+        if (typeof _currentView !== 'undefined' && _currentView === 'menu-' + menuId) {
+          renderCustomMenu(menuId);
+        }
+      }
+    }
+    await pushMenuToGas(menuId);
+  } catch { setSyncBadge('error'); }
 }
 
 // ── Push delete to GAS ────────────────────────────────────
