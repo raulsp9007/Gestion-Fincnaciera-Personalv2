@@ -1089,7 +1089,27 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./cashmap_sw.js').catch(() => {});
+      navigator.serviceWorker.register('./cashmap_sw.js').then(reg => {
+        // Fuerza chequeo activo de actualización al volver a la pestaña —
+        // sin esto, una PWA que rara vez se cierra del todo puede tardar
+        // mucho en notar que hay una versión nueva en el servidor.
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) reg.update().catch(() => {});
+        });
+      }).catch(() => {});
+
+      // cashmap_sw.js ya llama skipWaiting()+clients.claim() al activar, así
+      // que el SW nuevo toma control sin esperar a que se cierren pestañas
+      // viejas. Pero la pestaña ya abierta sigue con el JS viejo en memoria
+      // hasta recargar — este listener recarga una sola vez cuando eso pasa,
+      // para que la actualización se vea sin depender de que el usuario
+      // recuerde forzar recarga manualmente.
+      let _swReloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (_swReloaded) return;
+        _swReloaded = true;
+        location.reload();
+      });
     });
   }
 </script>
