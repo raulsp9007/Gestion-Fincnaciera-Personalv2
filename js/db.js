@@ -595,16 +595,25 @@ function processRecurringTxs() {
 }
 
 // ── Gestión de plantillas recurrentes ─────────────────────
+// Una plantilla real tiene recurring+recurringNext (o está pausada) Y no
+// tiene templateId — las ocurrencias que processRecurringTxs() materializa
+// heredan `recurring` de la plantilla (solo se les quita recurringNext) y
+// llevan templateId apuntando a su origen, así que sin este filtro cada
+// ocurrencia histórica ya generada se contaba como "plantilla duplicada".
+function _isRecurringTemplate(t) {
+  return !!t.recurring && t.templateId == null && (!!t.recurringNext || !!t.recurringPaused);
+}
+
 function getAllRecurringTemplates() {
   const d = loadData();
   const items = [];
 
-  d.inicio.filter(t => t.recurring).forEach(t => {
+  d.inicio.filter(_isRecurringTemplate).forEach(t => {
     items.push({ ...t, menuId: null, menuName: 'Inicio' });
   });
 
   d.customMenus.forEach(m => {
-    (m.data ?? []).filter(t => !t._deleted && t.recurring).forEach(t => {
+    (m.data ?? []).filter(t => !t._deleted && _isRecurringTemplate(t)).forEach(t => {
       items.push({ ...t, menuId: m.id, menuName: m.name });
     });
   });
