@@ -450,7 +450,7 @@ function logout() {
 }
 
 // ── App start ─────────────────────────────────────────────
-function startApp() {
+async function startApp() {
   // Aplicar rol a <body> para control CSS
   document.body.classList.remove('is-admin','is-editor','is-viewer');
   document.body.classList.add('is-' + currentUser.role);
@@ -476,6 +476,20 @@ function startApp() {
   } catch (e) { console.error('migrateTimePadding:', e); }
   buildNav();
   switchView('inicio');
+
+  applyGasIdentity(); // restaura GAS URL desde identidad guardada antes de sincronizar
+
+  // Sincroniza menús compartidos ANTES de procesar recurrentes: si no, un
+  // dispositivo con datos locales desactualizados puede materializar una
+  // ocurrencia de una plantilla recurrente que ya fue borrada/editada en
+  // otro dispositivo, antes de enterarse (vía pull) de ese cambio. Falla
+  // silenciosa si está offline o sin GAS configurado — no bloquea el arranque.
+  try {
+    if (getGasUrl() && typeof syncAllSharedMenus === 'function') {
+      await syncAllSharedMenus();
+    }
+  } catch (e) { console.error('presync menús compartidos:', e); }
+
   try {
     const affectedMenus = processRecurringTxs();
     if (affectedMenus?.length && typeof onMenuSaved === 'function') {
@@ -483,7 +497,6 @@ function startApp() {
     }
   } catch (e) { console.error('processRecurringTxs:', e); }
   renderInicio();
-  applyGasIdentity(); // restaura GAS URL desde identidad guardada antes de startSync
   startSync();
   startAutosave();
 
