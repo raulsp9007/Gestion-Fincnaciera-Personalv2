@@ -671,12 +671,16 @@ function renderAdminRecurring() {
     return;
   }
   el.innerHTML = items.map(t => {
-    const curr    = t.menuId == null ? '€' : (getCustomMenu(t.menuId)?.currency ?? '€');
+    const menu    = t.menuId == null ? null : getCustomMenu(t.menuId);
+    const curr    = t.menuId == null ? '€' : (menu?.currency ?? '€');
     const amtStr  = t.menuId == null ? fmtMoney(t.amount) : _fmtCurr(t.amount, curr);
     const nextStr = t.recurringPaused
       ? '<span class="badge pendiente">⏸ Pausado</span>'
       : `Próx: ${fmtDate(t.recurringNext)}`;
-    const menuArg = t.menuId ?? 'null';
+    const menuArg  = t.menuId ?? 'null';
+    // Mismo permiso que el resto de la app: viewer (global o por-menú
+    // compartido) no puede pausar/editar/eliminar, solo ver el historial.
+    const canWrite = t.menuId == null ? currentUser?.role !== 'viewer' : _canWriteMenuTxs(menu);
     return `<div class="cat-row">
       <span class="cat-row-label" style="font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description || 'Recurrente')}</span>
       <span style="font-size:.72rem;color:var(--text2);flex-shrink:0">${esc(t.menuName)}</span>
@@ -684,12 +688,12 @@ function renderAdminRecurring() {
       <span style="font-size:.72rem;color:var(--text2);flex-shrink:0">${_RECURRING_PERIOD_LABEL[t.recurring] ?? esc(t.recurring)}</span>
       <span style="font-size:.72rem;flex-shrink:0">${nextStr}</span>
       <div class="cat-row-actions">
-        ${t.recurringPaused
+        ${canWrite ? (t.recurringPaused
           ? `<button title="Reanudar" onclick="_adminResumeRecurring(${menuArg},${t.id})">▶</button>`
-          : `<button title="Pausar" onclick="_adminPauseRecurring(${menuArg},${t.id})">⏸</button>`}
-        <button title="Editar" onclick="adminEditRecurringTemplate(${menuArg},${t.id})">✏️</button>
+          : `<button title="Pausar" onclick="_adminPauseRecurring(${menuArg},${t.id})">⏸</button>`) : ''}
+        ${canWrite ? `<button title="Editar" onclick="adminEditRecurringTemplate(${menuArg},${t.id})">✏️</button>` : ''}
         <button title="Historial" onclick="openRecurringHistoryModal(${menuArg},${t.id})">📜</button>
-        <button title="Eliminar" onclick="adminDeleteRecurringTemplate(${menuArg},${t.id})">🗑️</button>
+        ${canWrite ? `<button title="Eliminar" onclick="adminDeleteRecurringTemplate(${menuArg},${t.id})">🗑️</button>` : ''}
       </div>
     </div>`;
   }).join('');
