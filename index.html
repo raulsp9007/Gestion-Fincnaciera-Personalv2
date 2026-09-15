@@ -669,6 +669,15 @@
       <label>Acceso para usuarios</label>
       <div id="sdm-users" style="max-height:200px;overflow-y:auto;background:var(--bg3);border-radius:8px;padding:8px 12px;border:1px solid var(--border)"></div>
     </div>
+    <div id="sdm-new-only" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <div style="font-size:.78rem;color:var(--text2);background:var(--bg3);border-radius:8px;padding:10px 12px">
+        ⚠️ Esto crea un pool <strong>independiente y vacío</strong>. Tus deudas locales actuales NO se copian aquí automáticamente.
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:.85rem">
+        <input type="checkbox" id="sdm-copy-local">
+        Copiar mis deudas locales aquí (una sola vez, al crear)
+      </label>
+    </div>
     <div class="login-error" id="sdm-error"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeShareDeudasModal()">Cancelar</button>
