@@ -4,6 +4,20 @@
 let currentUser = null;
 
 // ── Utilidad ─────────────────────────────────────────────
+async function hardRefreshApp() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch { /* mejor esfuerzo */ }
+  location.reload(true);
+}
+
 function esc(str) {
   return String(str ?? '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
